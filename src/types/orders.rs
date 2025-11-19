@@ -72,10 +72,44 @@ impl TxInfo for L2CreateOrderTxInfo {
         Ok(())
     }
 
-    fn hash(&self, _lighter_chain_id: u32) -> Result<Vec<u8>> {
-        // TODO: Implement Poseidon2 hashing
-        // This should hash all fields using the Goldilocks field
-        Ok(vec![0u8; 40])
+    fn hash(&self, lighter_chain_id: u32) -> Result<Vec<u8>> {
+        use poseidon_hash::{hash_to_quintic_extension, Goldilocks};
+
+        // Convert all transaction fields to Goldilocks field elements
+        // The order follows the Lighter Protocol specification
+        let mut elements = Vec::new();
+
+        // Add chain ID
+        elements.push(Goldilocks::from(lighter_chain_id as u64));
+
+        // Add transaction type
+        elements.push(Goldilocks::from(TX_TYPE_L2_CREATE_ORDER as u64));
+
+        // Add account info
+        elements.push(Goldilocks::from(self.account_index as u64));
+        elements.push(Goldilocks::from(self.api_key_index as u64));
+
+        // Add order info fields
+        elements.push(Goldilocks::from(self.order_info.market_index as u64));
+        elements.push(Goldilocks::from(self.order_info.client_order_index as u64));
+        elements.push(Goldilocks::from(self.order_info.base_amount as u64));
+        elements.push(Goldilocks::from(self.order_info.price as u64));
+        elements.push(Goldilocks::from(self.order_info.is_ask as u64));
+        elements.push(Goldilocks::from(self.order_info.order_type as u64));
+        elements.push(Goldilocks::from(self.order_info.time_in_force as u64));
+        elements.push(Goldilocks::from(self.order_info.reduce_only as u64));
+        elements.push(Goldilocks::from(self.order_info.trigger_price as u64));
+        elements.push(Goldilocks::from(self.order_info.order_expiry as u64));
+
+        // Add transaction metadata
+        elements.push(Goldilocks::from(self.expired_at as u64));
+        elements.push(Goldilocks::from(self.nonce as u64));
+
+        // Hash using Poseidon2
+        let hash_result = hash_to_quintic_extension(&elements);
+
+        // Convert Fp5Element to bytes (5 field elements * 8 bytes = 40 bytes)
+        Ok(hash_result.to_bytes_le().to_vec())
     }
 }
 
@@ -174,9 +208,26 @@ impl TxInfo for L2CancelOrderTxInfo {
         Ok(())
     }
 
-    fn hash(&self, _lighter_chain_id: u32) -> Result<Vec<u8>> {
-        // TODO: Implement Poseidon2 hashing
-        Ok(vec![0u8; 40])
+    fn hash(&self, lighter_chain_id: u32) -> Result<Vec<u8>> {
+        use poseidon_hash::{hash_to_quintic_extension, Goldilocks};
+
+        let mut elements = Vec::new();
+
+        // Add chain ID and transaction type
+        elements.push(Goldilocks::from(lighter_chain_id as u64));
+        elements.push(Goldilocks::from(TX_TYPE_L2_CANCEL_ORDER as u64));
+
+        // Add transaction fields
+        elements.push(Goldilocks::from(self.account_index as u64));
+        elements.push(Goldilocks::from(self.api_key_index as u64));
+        elements.push(Goldilocks::from(self.market_index as u64));
+        elements.push(Goldilocks::from(self.index as u64));
+        elements.push(Goldilocks::from(self.expired_at as u64));
+        elements.push(Goldilocks::from(self.nonce as u64));
+
+        // Hash using Poseidon2
+        let hash_result = hash_to_quintic_extension(&elements);
+        Ok(hash_result.to_bytes_le().to_vec())
     }
 }
 
@@ -221,9 +272,29 @@ impl TxInfo for L2ModifyOrderTxInfo {
         Ok(())
     }
 
-    fn hash(&self, _lighter_chain_id: u32) -> Result<Vec<u8>> {
-        // TODO: Implement Poseidon2 hashing
-        Ok(vec![0u8; 40])
+    fn hash(&self, lighter_chain_id: u32) -> Result<Vec<u8>> {
+        use poseidon_hash::{hash_to_quintic_extension, Goldilocks};
+
+        let mut elements = Vec::new();
+
+        // Add chain ID and transaction type
+        elements.push(Goldilocks::from(lighter_chain_id as u64));
+        elements.push(Goldilocks::from(TX_TYPE_L2_MODIFY_ORDER as u64));
+
+        // Add transaction fields
+        elements.push(Goldilocks::from(self.account_index as u64));
+        elements.push(Goldilocks::from(self.api_key_index as u64));
+        elements.push(Goldilocks::from(self.market_index as u64));
+        elements.push(Goldilocks::from(self.index as u64));
+        elements.push(Goldilocks::from(self.base_amount as u64));
+        elements.push(Goldilocks::from(self.price as u64));
+        elements.push(Goldilocks::from(self.trigger_price as u64));
+        elements.push(Goldilocks::from(self.expired_at as u64));
+        elements.push(Goldilocks::from(self.nonce as u64));
+
+        // Hash using Poseidon2
+        let hash_result = hash_to_quintic_extension(&elements);
+        Ok(hash_result.to_bytes_le().to_vec())
     }
 }
 
