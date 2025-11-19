@@ -67,22 +67,22 @@ impl HTTPClient {
     pub async fn send_tx(&self, tx_type: u8, tx_info: &str) -> Result<TxResponse> {
         let url = format!("{}/api/v1/sendTx", self.endpoint);
 
-        #[derive(serde::Serialize)]
-        struct SendTxRequest {
-            tx_type: u8,
-            tx_info: String,
+        // The API expects form data, not JSON
+        let mut form_data = vec![
+            ("tx_type", tx_type.to_string()),
+            ("tx_info", tx_info.to_string()),
+        ];
+
+        // Add price_protection if enabled
+        if self.fat_finger_protection {
+            form_data.push(("price_protection", "true".to_string()));
         }
 
-        let request_body = SendTxRequest {
-            tx_type,
-            tx_info: tx_info.to_string(),
-        };
-
         // Debug: print request
-        let request_json = serde_json::to_string(&request_body)?;
-        eprintln!("DEBUG - Sending request: {}", request_json);
+        eprintln!("DEBUG - Sending request as form data: tx_type={}, tx_info={}, price_protection={}",
+                  tx_type, tx_info, self.fat_finger_protection);
 
-        let response = self.client.post(&url).json(&request_body).send().await?;
+        let response = self.client.post(&url).form(&form_data).send().await?;
 
         if !response.status().is_success() {
             let error_text = response
