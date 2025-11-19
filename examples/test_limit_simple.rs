@@ -1,7 +1,6 @@
 use dotenv::dotenv;
 use lighter_rs::client::TxClient;
 use std::env;
-use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -16,16 +15,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     tracing::info!("Testing limit order placement...\n");
-    
-    let limit = tx_client.create_limit_order(
-        0,
-        chrono::Utc::now().timestamp_millis(),
-        50,            // Tiny: 0.00005 ETH
-        2_998_000_000, // $2998
-        0,
-        false,
-        None,
-    ).await?;
+
+    let limit = tx_client
+        .create_limit_order(
+            0,
+            chrono::Utc::now().timestamp_millis(),
+            50,            // Tiny: 0.00005 ETH
+            2_998_000_000, // $2998
+            0,
+            false,
+            None,
+        )
+        .await?;
 
     match tx_client.send_transaction(&limit).await {
         Ok(r) => {

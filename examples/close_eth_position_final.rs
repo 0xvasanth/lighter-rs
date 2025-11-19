@@ -1,9 +1,7 @@
 /// Close the 0.01 ETH position with reduce_only
-
 use dotenv::dotenv;
 use lighter_rs::client::TxClient;
 use std::env;
-use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -20,15 +18,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::info!("Closing 0.01 ETH position with reduce_only=true...\n");
 
-    let close = tx_client.create_market_order(
-        0,
-        chrono::Utc::now().timestamp_millis(),
-        10_000,        // 0.01 ETH exactly
-        3_000_000_000,
-        1,             // SELL
-        true,          // reduce_only!
-        None,
-    ).await?;
+    let close = tx_client
+        .create_market_order(
+            0,
+            chrono::Utc::now().timestamp_millis(),
+            10_000, // 0.01 ETH exactly
+            3_000_000_000,
+            1,    // SELL
+            true, // reduce_only!
+            None,
+        )
+        .await?;
 
     match tx_client.send_transaction(&close).await {
         Ok(r) if r.code == 200 => {

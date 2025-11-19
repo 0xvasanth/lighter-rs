@@ -7,7 +7,6 @@
 use lighter_rs::client::TxClient;
 use lighter_rs::constants::*;
 use lighter_rs::types::{
-use tracing;
     CancelAllOrdersTxReq, CancelOrderTxReq, CreateGroupedOrdersTxReq, CreateOrderTxReq,
     ModifyOrderTxReq, TransactOpts,
 };

@@ -13,7 +13,6 @@
 use lighter_rs::ws_client::WsClient;
 use serde_json::Value;
 use std::env;
-use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

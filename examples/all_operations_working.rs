@@ -8,7 +8,6 @@ use lighter_rs::constants::*;
 use lighter_rs::types::{CancelOrderTxReq, CreateOrderTxReq, ModifyOrderTxReq};
 use std::env;
 use std::time::Duration;
-use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -98,7 +97,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(r) => {
             tracing::info!(
                 "⚠️ SKIP - {}: {:?} (Will skip cancel/modify)\n",
-                r.code, r.message
+                r.code,
+                r.message
             );
             results.push(("Place Limit Order", false));
         }

@@ -5,11 +5,9 @@
 /// 2. "api key not found" - Verify API key registration
 ///
 /// Solutions provided based on error analysis
-
 use dotenv::dotenv;
 use lighter_rs::client::TxClient;
 use std::env;
-use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -22,7 +20,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let private_key = env::var("LIGHTER_API_KEY")?;
     let account_index: i64 = env::var("LIGHTER_ACCOUNT_INDEX")?.parse()?;
     let api_key_index: u8 = env::var("LIGHTER_API_KEY_INDEX")?.parse()?;
-    let chain_id: u32 = env::var("LIGHTER_CHAIN_ID").unwrap_or_else(|_| "304".to_string()).parse()?;
+    let chain_id: u32 = env::var("LIGHTER_CHAIN_ID")
+        .unwrap_or_else(|_| "304".to_string())
+        .parse()?;
     let api_url = env::var("LIGHTER_API_URL")?;
 
     tracing::info!("Configuration Check:");
@@ -34,7 +34,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("");
 
     // Initialize client
-    let tx_client = match TxClient::new(&api_url, &private_key, account_index, api_key_index, chain_id) {
+    let tx_client = match TxClient::new(
+        &api_url,
+        &private_key,
+        account_index,
+        api_key_index,
+        chain_id,
+    ) {
         Ok(client) => {
             tracing::info!("✅ Client initialized successfully");
             client
@@ -63,7 +69,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let test_amounts = vec![
         (100_000i64, "$0.10", "Too small - likely below minimum"),
         (1_000_000, "$1.00", "Small - may be below minimum"),
-        (10_000_000, "$10.00", "Medium - should work if above minimum"),
+        (
+            10_000_000,
+            "$10.00",
+            "Medium - should work if above minimum",
+        ),
         (100_000_000, "$100.00", "Large - should definitely work"),
     ];
 
@@ -71,31 +81,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing::info!("  Testing base_amount = {} ({})", amount, description);
         tracing::info!("    {}", note);
 
-        match tx_client.create_limit_order(
-            0, // ETH market
-            chrono::Utc::now().timestamp_millis(),
-            amount,
-            3_000_000_000, // $3000 price
-            0,
-            false,
-            None,
-        ).await {
-            Ok(order) => {
-                match tx_client.send_transaction(&order).await {
-                    Ok(response) => {
-                        if response.code == 200 {
-                            tracing::info!("    ✅ SUCCESS! This amount works!");
-                            tracing::info!("    Minimum working amount: {} ({})\\n", amount, description);
-                            break;
-                        } else {
-                            tracing::info!("    ❌ Error: {:?}", response.message);
-                        }
-                    }
-                    Err(e) => {
-                        tracing::info!("    ❌ Error: {}", e);
+        match tx_client
+            .create_limit_order(
+                0, // ETH market
+                chrono::Utc::now().timestamp_millis(),
+                amount,
+                3_000_000_000, // $3000 price
+                0,
+                false,
+                None,
+            )
+            .await
+        {
+            Ok(order) => match tx_client.send_transaction(&order).await {
+                Ok(response) => {
+                    if response.code == 200 {
+                        tracing::info!("    ✅ SUCCESS! This amount works!");
+                        tracing::info!(
+                            "    Minimum working amount: {} ({})\\n",
+                            amount,
+                            description
+                        );
+                        break;
+                    } else {
+                        tracing::info!("    ❌ Error: {:?}", response.message);
                     }
                 }
-            }
+                Err(e) => {
+                    tracing::info!("    ❌ Error: {}", e);
+                }
+            },
             Err(e) => {
                 tracing::info!("    ❌ Order creation failed: {}", e);
             }
@@ -140,7 +155,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if private_key.len() != 80 && private_key.len() != 64 {
-        tracing::info!("⚠️  WARNING: Unusual API key length ({} chars)", private_key.len());
+        tracing::info!(
+            "⚠️  WARNING: Unusual API key length ({} chars)",
+            private_key.len()
+        );
         tracing::info!("   Expected: 80 chars (40 bytes hex) or 64 chars (32 bytes hex)");
         tracing::info!("");
     }

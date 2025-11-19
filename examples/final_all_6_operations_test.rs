@@ -2,14 +2,12 @@
 ///
 /// All operations under $5 total cost
 /// Uses reduce_only properly for closing positions
-
 use dotenv::dotenv;
 use lighter_rs::client::TxClient;
 use lighter_rs::constants::*;
 use lighter_rs::types::{CancelOrderTxReq, CreateOrderTxReq, ModifyOrderTxReq};
 use std::env;
 use std::time::Duration;
-use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -23,10 +21,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let private_key = env::var("LIGHTER_API_KEY")?;
     let account_index: i64 = env::var("LIGHTER_ACCOUNT_INDEX")?.parse()?;
     let api_key_index: u8 = env::var("LIGHTER_API_KEY_INDEX")?.parse()?;
-    let chain_id: u32 = env::var("LIGHTER_CHAIN_ID").unwrap_or_else(|_| "304".to_string()).parse()?;
+    let chain_id: u32 = env::var("LIGHTER_CHAIN_ID")
+        .unwrap_or_else(|_| "304".to_string())
+        .parse()?;
     let api_url = env::var("LIGHTER_API_URL")?;
 
-    let tx_client = TxClient::new(&api_url, &private_key, account_index, api_key_index, chain_id)?;
+    let tx_client = TxClient::new(
+        &api_url,
+        &private_key,
+        account_index,
+        api_key_index,
+        chain_id,
+    )?;
     tracing::info!("✅ Client initialized");
     tracing::info!("   Account: {}", account_index);
     tracing::info!("   Total test cost: < $5\n");
@@ -42,7 +48,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     tracing::info!("Opening 0.0001 ETH long (~$0.30)...\n");
 
-    let open = tx_client.create_market_order(market_index, chrono::Utc::now().timestamp_millis(), tiny, 3_000_000_000, 0, false, None).await?;
+    let open = tx_client
+        .create_market_order(
+            market_index,
+            chrono::Utc::now().timestamp_millis(),
+            tiny,
+            3_000_000_000,
+            0,
+            false,
+            None,
+        )
+        .await?;
 
     match tx_client.send_transaction(&open).await {
         Ok(r) if r.code == 200 => {
@@ -66,15 +82,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let limit_idx = chrono::Utc::now().timestamp_millis();
 
-    let limit = tx_client.create_limit_order(
-        market_index,
-        limit_idx,
-        50,            // Tiny: 0.00005 ETH
-        2_995_000_000, // Very close to market
-        0,
-        false,
-        None,
-    ).await?;
+    let limit = tx_client
+        .create_limit_order(
+            market_index,
+            limit_idx,
+            50,            // Tiny: 0.00005 ETH
+            2_995_000_000, // Very close to market
+            0,
+            false,
+            None,
+        )
+        .await?;
 
     let mut limit_placed = false;
     match tx_client.send_transaction(&limit).await {
@@ -208,7 +226,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 // Cancel for cleanup
                 tokio::time::sleep(Duration::from_secs(1)).await;
-                if let Ok(cancel) = tx_client.cancel_order(&CancelOrderTxReq { market_index, index: sl_idx }, None).await {
+                if let Ok(cancel) = tx_client
+                    .cancel_order(
+                        &CancelOrderTxReq {
+                            market_index,
+                            index: sl_idx,
+                        },
+                        None,
+                    )
+                    .await
+                {
                     if let Ok(cancel_r) = tx_client.send_transaction(&cancel).await {
                         if cancel_r.code == 200 {
                             tracing::info!("   (Cancelled for cleanup)\n");
@@ -238,15 +265,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     tracing::info!("Closing 0.0001 ETH position...\n");
 
-    let close = tx_client.create_market_order(
-        market_index,
-        chrono::Utc::now().timestamp_millis(),
-        tiny,
-        3_000_000_000,
-        1,
-        true,  // reduce_only = true ← CRITICAL FOR CLOSING!
-        None,
-    ).await?;
+    let close = tx_client
+        .create_market_order(
+            market_index,
+            chrono::Utc::now().timestamp_millis(),
+            tiny,
+            3_000_000_000,
+            1,
+            true, // reduce_only = true ← CRITICAL FOR CLOSING!
+            None,
+        )
+        .await?;
 
     match tx_client.send_transaction(&close).await {
         Ok(r) if r.code == 200 => {
@@ -284,7 +313,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     tracing::info!("\n═══════════════════════════════════════════════════════════");
-    tracing::info!("FINAL SCORE: {}/{} operations verified working", passed, total);
+    tracing::info!(
+        "FINAL SCORE: {}/{} operations verified working",
+        passed,
+        total
+    );
     tracing::info!("═══════════════════════════════════════════════════════════\n");
 
     if passed == total {

@@ -21,7 +21,6 @@ use serde_json::Value;
 use std::env;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -139,7 +138,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                             }
                                             order_placed.store(true, Ordering::Relaxed);
                                         } else {
-                                            tracing::info!("  ✗ Order failed: {:?}", response.message);
+                                            tracing::info!(
+                                                "  ✗ Order failed: {:?}",
+                                                response.message
+                                            );
                                         }
                                     }
                                     Err(e) => tracing::info!("  ✗ Submit error: {}", e),

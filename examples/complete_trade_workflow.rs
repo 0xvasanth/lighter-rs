@@ -9,13 +9,11 @@
 /// 6. Verify cancellation
 ///
 /// This is the most comprehensive test of the trading API.
-
 use dotenv::dotenv;
 use lighter_rs::client::TxClient;
 use lighter_rs::types::CancelOrderTxReq;
 use std::env;
 use std::time::Duration;
-use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -30,19 +28,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let private_key = env::var("LIGHTER_API_KEY")?;
     let account_index: i64 = env::var("LIGHTER_ACCOUNT_INDEX")?.parse()?;
     let api_key_index: u8 = env::var("LIGHTER_API_KEY_INDEX")?.parse()?;
-    let chain_id: u32 = env::var("LIGHTER_CHAIN_ID").unwrap_or_else(|_| "304".to_string()).parse()?;
+    let chain_id: u32 = env::var("LIGHTER_CHAIN_ID")
+        .unwrap_or_else(|_| "304".to_string())
+        .parse()?;
     let api_url = env::var("LIGHTER_API_URL")?;
 
     tracing::info!("📋 Configuration:");
     tracing::info!("   API URL: {}", api_url);
     tracing::info!("   Account: {}", account_index);
     tracing::info!("   API Key Index: {}", api_key_index);
-    tracing::info!("   Chain: {}", if chain_id == 304 { "Mainnet" } else { "Testnet" });
+    tracing::info!(
+        "   Chain: {}",
+        if chain_id == 304 {
+            "Mainnet"
+        } else {
+            "Testnet"
+        }
+    );
     tracing::info!("");
 
     // Initialize client
     tracing::info!("🔌 Step 1: Initialize Client");
-    let tx_client = TxClient::new(&api_url, &private_key, account_index, api_key_index, chain_id)?;
+    let tx_client = TxClient::new(
+        &api_url,
+        &private_key,
+        account_index,
+        api_key_index,
+        chain_id,
+    )?;
     tracing::info!("   ✅ Client ready\n");
 
     // Market selection
@@ -63,21 +76,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::info!("📝 Step 3: Create Order (Local)");
     tracing::info!("   Type: LIMIT BUY");
-    tracing::info!("   Price: ${:.2} (far below market)", order_price as f64 / 1_000_000.0);
+    tracing::info!(
+        "   Price: ${:.2} (far below market)",
+        order_price as f64 / 1_000_000.0
+    );
     tracing::info!("   Amount: ${:.2}", order_amount as f64 / 1_000_000.0);
     tracing::info!("   Order Index: {}", client_order_index);
     tracing::info!("   ⚠️  Price is intentionally low to prevent execution");
     tracing::info!("");
 
-    let order = match tx_client.create_limit_order(
-        market_index,
-        client_order_index,
-        order_amount,
-        order_price,
-        0, // BUY
-        false,
-        None,
-    ).await {
+    let order = match tx_client
+        .create_limit_order(
+            market_index,
+            client_order_index,
+            order_amount,
+            order_price,
+            0, // BUY
+            false,
+            None,
+        )
+        .await
+    {
         Ok(order) => {
             tracing::info!("   ✅ Order created");
 
@@ -197,21 +216,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             tracing::info!("📤 Step 8: Submit Cancellation");
             match tx_client.send_transaction(&cancel_tx).await {
-                Ok(response) => {
-                    match response.code {
-                        200 => {
-                            tracing::info!("   ✅ SUCCESS! Order cancelled");
-                            if let Some(hash) = response.tx_hash {
-                                tracing::info!("   📝 Cancel Tx Hash: {}", hash);
-                            }
-                        }
-                        _ => {
-                            tracing::info!("   ⚠️  Cancel returned code: {}", response.code);
-                            tracing::info!("   Message: {:?}", response.message);
-                            tracing::info!("   Note: Order might already be cancelled/filled");
+                Ok(response) => match response.code {
+                    200 => {
+                        tracing::info!("   ✅ SUCCESS! Order cancelled");
+                        if let Some(hash) = response.tx_hash {
+                            tracing::info!("   📝 Cancel Tx Hash: {}", hash);
                         }
                     }
-                }
+                    _ => {
+                        tracing::info!("   ⚠️  Cancel returned code: {}", response.code);
+                        tracing::info!("   Message: {:?}", response.message);
+                        tracing::info!("   Note: Order might already be cancelled/filled");
+                    }
+                },
                 Err(e) => {
                     tracing::info!("   ⚠️  Cancel failed: {}", e);
                 }
@@ -244,7 +261,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("");
 
     tracing::info!("📈 Trade Lifecycle:");
-    tracing::info!("   1. Created limit order at ${}", order_price as f64 / 1_000_000.0);
+    tracing::info!(
+        "   1. Created limit order at ${}",
+        order_price as f64 / 1_000_000.0
+    );
     tracing::info!("   2. Submitted to Lighter ✓");
     tracing::info!("   3. Order placed on book ✓");
     tracing::info!("   4. Cancelled successfully ✓");

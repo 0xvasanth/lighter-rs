@@ -6,7 +6,6 @@
 
 use lighter_rs::client::TxClient;
 use lighter_rs::types::{BurnSharesTxReq, CreatePublicPoolTxReq, MintSharesTxReq, TransactOpts};
-use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

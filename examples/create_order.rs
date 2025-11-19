@@ -2,7 +2,6 @@ use dotenv::dotenv;
 use lighter_rs::client::TxClient;
 use lighter_rs::types::TxInfo;
 use std::env;
-use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

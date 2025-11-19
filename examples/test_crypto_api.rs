@@ -1,7 +1,6 @@
 /// Test to explore the goldilocks-crypto and poseidon-hash APIs
 use goldilocks_crypto::*;
 use poseidon_hash::*;
-use tracing;
 
 fn main() {
     tracing_subscriber::fmt::init();
@@ -19,10 +18,7 @@ fn main() {
 
     // Test 3: Hash a message with Poseidon
     tracing::info!("\n3. Hashing message with Poseidon...");
-    let message_elements = vec![
-        Goldilocks::from(12345u64),
-        Goldilocks::from(67890u64),
-    ];
+    let message_elements = vec![Goldilocks::from(12345u64), Goldilocks::from(67890u64)];
     let hash = hash_to_quintic_extension(&message_elements);
     tracing::info!("   Hash result: {:?}", hash);
 
@@ -34,7 +30,10 @@ fn main() {
     match sign_with_nonce(&private_key.to_bytes_le(), message, &nonce.to_bytes_le()) {
         Ok(signature) => {
             tracing::info!("   Signature generated: {} bytes", signature.len());
-            tracing::info!("   Signature (first 20 bytes): {:?}", &signature[..20.min(signature.len())]);
+            tracing::info!(
+                "   Signature (first 20 bytes): {:?}",
+                &signature[..20.min(signature.len())]
+            );
 
             // Test 5: Verify the signature
             tracing::info!("\n5. Verifying signature...");

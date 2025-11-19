@@ -6,13 +6,11 @@
 /// 3. Cancels the order to avoid any execution
 ///
 /// This proves the API is working without risking real money.
-
 use dotenv::dotenv;
 use lighter_rs::client::TxClient;
 use lighter_rs::types::CancelOrderTxReq;
 use std::env;
 use std::time::Duration;
-use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -25,7 +23,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let private_key = env::var("LIGHTER_API_KEY")?;
     let account_index: i64 = env::var("LIGHTER_ACCOUNT_INDEX")?.parse()?;
     let api_key_index: u8 = env::var("LIGHTER_API_KEY_INDEX")?.parse()?;
-    let chain_id: u32 = env::var("LIGHTER_CHAIN_ID").unwrap_or_else(|_| "304".to_string()).parse()?;
+    let chain_id: u32 = env::var("LIGHTER_CHAIN_ID")
+        .unwrap_or_else(|_| "304".to_string())
+        .parse()?;
     let api_url = env::var("LIGHTER_API_URL")?;
 
     tracing::info!("Configuration:");
@@ -37,7 +37,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Initialize client
     tracing::info!("Step 1: Initializing client...");
-    let tx_client = TxClient::new(&api_url, &private_key, account_index, api_key_index, chain_id)?;
+    let tx_client = TxClient::new(
+        &api_url,
+        &private_key,
+        account_index,
+        api_key_index,
+        chain_id,
+    )?;
     tracing::info!("  ✅ Client initialized successfully\n");
 
     // Step 2: Create a safe limit order
@@ -54,21 +60,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     tracing::info!("  Market: ETH (index: {})", market_index);
     tracing::info!("  Order Type: LIMIT BUY");
-    tracing::info!("  Price: ${} (far below market - will NOT fill)", safe_price as f64 / 1_000_000.0);
+    tracing::info!(
+        "  Price: ${} (far below market - will NOT fill)",
+        safe_price as f64 / 1_000_000.0
+    );
     tracing::info!("  Amount: ${}", base_amount as f64 / 1_000_000.0);
     tracing::info!("  Client Order Index: {}", client_order_index);
     tracing::info!("");
 
     tracing::info!("  Creating order...");
-    let order = match tx_client.create_limit_order(
-        market_index,
-        client_order_index,
-        base_amount,
-        safe_price,
-        0, // BUY (0 = buy, 1 = sell)
-        false, // Not reduce-only
-        None,
-    ).await {
+    let order = match tx_client
+        .create_limit_order(
+            market_index,
+            client_order_index,
+            base_amount,
+            safe_price,
+            0,     // BUY (0 = buy, 1 = sell)
+            false, // Not reduce-only
+            None,
+        )
+        .await
+    {
         Ok(order) => {
             tracing::info!("  ✅ Order created and signed locally");
             order
@@ -105,7 +117,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 tracing::info!("");
                 true
             } else {
-                tracing::info!("  ⚠️  Order submission returned non-200 code: {}", response.code);
+                tracing::info!(
+                    "  ⚠️  Order submission returned non-200 code: {}",
+                    response.code
+                );
                 tracing::info!("  Message: {:?}", response.message);
                 tracing::info!("");
 
@@ -119,12 +134,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                     21109 => {
                         tracing::info!("  💡 Error 21109 (api key not found):");
-                        tracing::info!("     - API key is not registered at https://app.lighter.xyz");
+                        tracing::info!(
+                            "     - API key is not registered at https://app.lighter.xyz"
+                        );
                         tracing::info!("     - Verify account_index and api_key_index are correct");
                         tracing::info!("     - Generate a new API key if needed");
                     }
                     _ => {
-                        tracing::info!("  💡 Check TROUBLESHOOTING.md for error code {}", response.code);
+                        tracing::info!(
+                            "  💡 Check TROUBLESHOOTING.md for error code {}",
+                            response.code
+                        );
                     }
                 }
                 tracing::info!("");
@@ -192,7 +212,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         tracing::info!("");
 
                         if response.code == 21109 {
-                            tracing::info!("  Note: Order might not exist or already filled/cancelled");
+                            tracing::info!(
+                                "  Note: Order might not exist or already filled/cancelled"
+                            );
                         }
                     }
                 }
@@ -215,9 +237,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("  ✅ Client initialization: SUCCESS");
     tracing::info!("  ✅ Order creation: SUCCESS");
     tracing::info!("  ✅ Signature generation: SUCCESS (non-zero)");
-    tracing::info!("  {} Order placement: {}",
+    tracing::info!(
+        "  {} Order placement: {}",
         if order_placed { "✅" } else { "⚠️ " },
-        if order_placed { "SUCCESS" } else { "FAILED (check credentials)" }
+        if order_placed {
+            "SUCCESS"
+        } else {
+            "FAILED (check credentials)"
+        }
     );
     tracing::info!("");
 

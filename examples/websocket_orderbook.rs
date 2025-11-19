@@ -8,7 +8,6 @@
 //! Run with: cargo run --example websocket_orderbook
 
 use lighter_rs::ws_client::{OrderBook, WsClient};
-use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

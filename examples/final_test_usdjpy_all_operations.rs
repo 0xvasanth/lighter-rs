@@ -3,14 +3,12 @@
 /// Using USDJPY (market 98) for stability - less price movement than ETH
 /// All operations under $5 total
 /// Tests: Open, Limit, Modify, Cancel, Stop Loss, Close
-
 use dotenv::dotenv;
 use lighter_rs::client::TxClient;
 use lighter_rs::constants::*;
 use lighter_rs::types::{CancelOrderTxReq, CreateOrderTxReq, ModifyOrderTxReq};
 use std::env;
 use std::time::Duration;
-use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -24,10 +22,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let private_key = env::var("LIGHTER_API_KEY")?;
     let account_index: i64 = env::var("LIGHTER_ACCOUNT_INDEX")?.parse()?;
     let api_key_index: u8 = env::var("LIGHTER_API_KEY_INDEX")?.parse()?;
-    let chain_id: u32 = env::var("LIGHTER_CHAIN_ID").unwrap_or_else(|_| "304".to_string()).parse()?;
+    let chain_id: u32 = env::var("LIGHTER_CHAIN_ID")
+        .unwrap_or_else(|_| "304".to_string())
+        .parse()?;
     let api_url = env::var("LIGHTER_API_URL")?;
 
-    let tx_client = TxClient::new(&api_url, &private_key, account_index, api_key_index, chain_id)?;
+    let tx_client = TxClient::new(
+        &api_url,
+        &private_key,
+        account_index,
+        api_key_index,
+        chain_id,
+    )?;
 
     tracing::info!("Configuration:");
     tracing::info!("  Market: USDJPY (market 98)");
@@ -48,15 +54,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("TEST 1: Open Position (Buy 0.5 USD worth of USDJPY)");
     tracing::info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
-    let open = tx_client.create_market_order(
-        market_index,
-        chrono::Utc::now().timestamp_millis(),
-        small_amount,  // 0.5 USD
-        158_000_000,   // 158 JPY mid price (with 3 decimals: 158000)
-        0,             // BUY
-        false,
-        None,
-    ).await?;
+    let open = tx_client
+        .create_market_order(
+            market_index,
+            chrono::Utc::now().timestamp_millis(),
+            small_amount, // 0.5 USD
+            158_000_000,  // 158 JPY mid price (with 3 decimals: 158000)
+            0,            // BUY
+            false,
+            None,
+        )
+        .await?;
 
     match tx_client.send_transaction(&open).await {
         Ok(r) if r.code == 200 => {
@@ -86,15 +94,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let limit_idx = chrono::Utc::now().timestamp_millis();
 
-    let limit = tx_client.create_limit_order(
-        market_index,
-        limit_idx,
-        small_amount,  // 0.5 USD
-        157_500_000,   // 157.5 JPY (slightly below market ~158)
-        0,             // BUY
-        false,
-        None,
-    ).await?;
+    let limit = tx_client
+        .create_limit_order(
+            market_index,
+            limit_idx,
+            small_amount, // 0.5 USD
+            157_500_000,  // 157.5 JPY (slightly below market ~158)
+            0,            // BUY
+            false,
+            None,
+        )
+        .await?;
 
     let mut limit_placed = false;
     match tx_client.send_transaction(&limit).await {
@@ -130,7 +140,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             market_index,
             index: limit_idx,
             base_amount: small_amount,
-            price: 157_000_000,  // 157 JPY
+            price: 157_000_000, // 157 JPY
             trigger_price: 0,
         };
 
@@ -217,8 +227,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         market_index,
         client_order_index: sl_idx,
         base_amount: small_amount,
-        price: 156_500_000,        // 156.5 JPY execution
-        is_ask: 1,                 // SELL
+        price: 156_500_000, // 156.5 JPY execution
+        is_ask: 1,          // SELL
         order_type: ORDER_TYPE_STOP_LOSS,
         time_in_force: TIME_IN_FORCE_IMMEDIATE_OR_CANCEL,
         reduce_only: 1,
@@ -237,7 +247,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 // Cancel for cleanup
                 tokio::time::sleep(Duration::from_secs(1)).await;
-                if let Ok(cancel) = tx_client.cancel_order(&CancelOrderTxReq { market_index, index: sl_idx }, None).await {
+                if let Ok(cancel) = tx_client
+                    .cancel_order(
+                        &CancelOrderTxReq {
+                            market_index,
+                            index: sl_idx,
+                        },
+                        None,
+                    )
+                    .await
+                {
                     let _ = tx_client.send_transaction(&cancel).await;
                 }
             }
@@ -264,15 +283,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("TEST 6: Close Position (Market Sell with reduce_only)");
     tracing::info!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
 
-    let close = tx_client.create_market_order(
-        market_index,
-        chrono::Utc::now().timestamp_millis(),
-        small_amount,
-        158_000_000,   // 158 JPY
-        1,             // SELL
-        true,          // reduce_only = true ← IMPORTANT!
-        None,
-    ).await?;
+    let close = tx_client
+        .create_market_order(
+            market_index,
+            chrono::Utc::now().timestamp_millis(),
+            small_amount,
+            158_000_000, // 158 JPY
+            1,           // SELL
+            true,        // reduce_only = true ← IMPORTANT!
+            None,
+        )
+        .await?;
 
     match tx_client.send_transaction(&close).await {
         Ok(r) if r.code == 200 => {
@@ -307,7 +328,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     tracing::info!("\n═══════════════════════════════════════════════════════════");
-    tracing::info!("FINAL SCORE: {}/{} operations working on USDJPY", passed, total);
+    tracing::info!(
+        "FINAL SCORE: {}/{} operations working on USDJPY",
+        passed,
+        total
+    );
     tracing::info!("═══════════════════════════════════════════════════════════\n");
 
     if passed == total {

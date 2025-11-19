@@ -25,7 +25,6 @@ use std::env;
 use std::sync::atomic::{AtomicU32, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tracing;
 
 // Circuit breaker states
 const CIRCUIT_CLOSED: u8 = 0; // Normal operation
@@ -210,7 +209,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                     tracing::info!(
                         "  Ask: {:.2} | Bid: {:.2} | Mid: {:.2}",
-                        ask_price, bid_price, mid_price
+                        ask_price,
+                        bid_price,
+                        mid_price
                     );
                     tracing::info!("  Spread: {:.4} ({:.2} bps)", spread, spread_bps);
 
@@ -222,7 +223,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         if count < 3 {
                             tracing::info!(
                                 "\n  🎯 TRADING SIGNAL: Spread {:.2} bps >= {:.2} bps",
-                                spread_bps, MIN_SPREAD_BPS
+                                spread_bps,
+                                MIN_SPREAD_BPS
                             );
                             tracing::info!("     Placing order #{}", count + 1);
 
@@ -247,7 +249,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                     match tx_client.send_transaction(&order).await {
                                         Ok(response) => {
                                             if response.code == 200 {
-                                                tracing::info!("     ✓ Order submitted successfully!");
+                                                tracing::info!(
+                                                    "     ✓ Order submitted successfully!"
+                                                );
                                                 if let Some(hash) = response.tx_hash {
                                                     tracing::info!("       Tx: {}", hash);
                                                 }

@@ -18,7 +18,6 @@ use serde_json::Value;
 use std::env;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
-use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -129,7 +128,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 tracing::info!(
                     "  Depth (top 5): Asks {:.2} | Bids {:.2}",
-                    ask_depth, bid_depth
+                    ask_depth,
+                    bid_depth
                 );
 
                 // Track price movement
@@ -146,7 +146,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                         tracing::info!(
                             "  📈 Price Change: ${:.4} ({:+.2}%)",
-                            price_change, price_change_pct
+                            price_change,
+                            price_change_pct
                         );
 
                         // Simple trading logic: Trade on significant price moves
@@ -189,7 +190,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                                 }
                                                 trade_count.fetch_add(1, Ordering::Relaxed);
                                             } else {
-                                                tracing::info!("     ✗ Rejected: {:?}", response.message);
+                                                tracing::info!(
+                                                    "     ✗ Rejected: {:?}",
+                                                    response.message
+                                                );
                                             }
                                         }
                                         Err(e) => tracing::info!("     ✗ Submit error: {}", e),
@@ -272,12 +276,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match ws_client.run(on_order_book_update, on_account_update).await {
         Ok(_) => tracing::info!("\n✓ WebSocket closed normally"),
         Err(e) => {
-            etracing::info!("\n✗ WebSocket error: {}", e);
-            etracing::info!("\nTroubleshooting:");
-            etracing::info!("  1. Check your internet connection");
-            etracing::info!("  2. Verify API URL in .env: {}", api_url);
-            etracing::info!("  3. Ensure WebSocket endpoint is accessible");
-            etracing::info!("  4. Try: wss://{}/stream", ws_host);
+            tracing::info!("\n✗ WebSocket error: {}", e);
+            tracing::info!("\nTroubleshooting:");
+            tracing::info!("  1. Check your internet connection");
+            tracing::info!("  2. Verify API URL in .env: {}", api_url);
+            tracing::info!("  3. Ensure WebSocket endpoint is accessible");
+            tracing::info!("  4. Try: wss://{}/stream", ws_host);
         }
     }
 

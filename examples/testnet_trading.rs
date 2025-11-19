@@ -19,7 +19,6 @@ use lighter_rs::client::{TxClient, TxResponse};
 use lighter_rs::constants::*;
 use lighter_rs::types::{CancelOrderTxReq, CreateOrderTxReq, TxInfo};
 use std::env;
-use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

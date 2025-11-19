@@ -8,14 +8,12 @@
 /// 6. Close Position (with reduce_only)
 ///
 /// All under $2 total cost
-
 use dotenv::dotenv;
 use lighter_rs::client::TxClient;
 use lighter_rs::constants::*;
 use lighter_rs::types::{CancelOrderTxReq, CreateOrderTxReq, ModifyOrderTxReq};
 use std::env;
 use std::time::Duration;
-use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -29,10 +27,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let private_key = env::var("LIGHTER_API_KEY")?;
     let account_index: i64 = env::var("LIGHTER_ACCOUNT_INDEX")?.parse()?;
     let api_key_index: u8 = env::var("LIGHTER_API_KEY_INDEX")?.parse()?;
-    let chain_id: u32 = env::var("LIGHTER_CHAIN_ID").unwrap_or_else(|_| "304".to_string()).parse()?;
+    let chain_id: u32 = env::var("LIGHTER_CHAIN_ID")
+        .unwrap_or_else(|_| "304".to_string())
+        .parse()?;
     let api_url = env::var("LIGHTER_API_URL")?;
 
-    let tx_client = TxClient::new(&api_url, &private_key, account_index, api_key_index, chain_id)?;
+    let tx_client = TxClient::new(
+        &api_url,
+        &private_key,
+        account_index,
+        api_key_index,
+        chain_id,
+    )?;
 
     tracing::info!("✅ Client: Account {}", account_index);
     tracing::info!("💰 Total cost: < $2\n");
@@ -45,20 +51,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // TEST 1: OPEN
     tracing::info!("TEST 1: Open 0.0001 ETH position...");
-    let open = tx_client.create_market_order(market, chrono::Utc::now().timestamp_millis(), tiny, 3_000_000_000, 0, false, None).await?;
+    let open = tx_client
+        .create_market_order(
+            market,
+            chrono::Utc::now().timestamp_millis(),
+            tiny,
+            3_000_000_000,
+            0,
+            false,
+            None,
+        )
+        .await?;
     match tx_client.send_transaction(&open).await {
         Ok(r) if r.code == 200 => {
             tracing::info!("✅ OPEN POSITION\n");
             results.push(true);
         }
-        _ => { tracing::info!("❌ FAILED\n"); results.push(false); }
+        _ => {
+            tracing::info!("❌ FAILED\n");
+            results.push(false);
+        }
     }
     tokio::time::sleep(Duration::from_secs(2)).await;
 
     // TEST 2: LIMIT ORDER
     tracing::info!("TEST 2: Limit buy at $2998 (0.07% below market)...");
     let lim_idx = chrono::Utc::now().timestamp_millis();
-    let lim = tx_client.create_limit_order(market, lim_idx, micro, 2_998_000_000, 0, false, None).await?;
+    let lim = tx_client
+        .create_limit_order(market, lim_idx, micro, 2_998_000_000, 0, false, None)
+        .await?;
 
     let mut lim_ok = false;
     match tx_client.send_transaction(&lim).await {
@@ -71,14 +92,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             tracing::info!("❌ LIMIT - {}: {:?}\n", r.code, r.message);
             results.push(false);
         }
-        _ => { tracing::info!("❌ FAILED\n"); results.push(false); }
+        _ => {
+            tracing::info!("❌ FAILED\n");
+            results.push(false);
+        }
     }
     tokio::time::sleep(Duration::from_secs(2)).await;
 
     // TEST 3: MODIFY
     if lim_ok {
         tracing::info!("TEST 3: Modify limit ($2998 → $2997)...");
-        let mod_req = ModifyOrderTxReq { market_index: market, index: lim_idx, base_amount: micro, price: 2_997_000_000, trigger_price: 0 };
+        let mod_req = ModifyOrderTxReq {
+            market_index: market,
+            index: lim_idx,
+            base_amount: micro,
+            price: 2_997_000_000,
+            trigger_price: 0,
+        };
         match tx_client.modify_order(&mod_req, None).await {
             Ok(mod_tx) => match tx_client.send_transaction(&mod_tx).await {
                 Ok(r) if r.code == 200 => {
@@ -89,15 +119,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     tracing::info!("❌ MODIFY - {}: {:?}\n", r.code, r.message);
                     results.push(false);
                 }
-                _ => { tracing::info!("❌ FAILED\n"); results.push(false); }
+                _ => {
+                    tracing::info!("❌ FAILED\n");
+                    results.push(false);
+                }
             },
-            _ => { tracing::info!("❌ FAILED\n"); results.push(false); }
+            _ => {
+                tracing::info!("❌ FAILED\n");
+                results.push(false);
+            }
         }
         tokio::time::sleep(Duration::from_secs(2)).await;
 
         // TEST 4: CANCEL
         tracing::info!("TEST 4: Cancel limit order...");
-        let can_req = CancelOrderTxReq { market_index: market, index: lim_idx };
+        let can_req = CancelOrderTxReq {
+            market_index: market,
+            index: lim_idx,
+        };
         match tx_client.cancel_order(&can_req, None).await {
             Ok(can_tx) => match tx_client.send_transaction(&can_tx).await {
                 Ok(r) if r.code == 200 => {
@@ -108,9 +147,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     tracing::info!("❌ CANCEL - {}: {:?}\n", r.code, r.message);
                     results.push(false);
                 }
-                _ => { tracing::info!("❌ FAILED\n"); results.push(false); }
+                _ => {
+                    tracing::info!("❌ FAILED\n");
+                    results.push(false);
+                }
             },
-            _ => { tracing::info!("❌ FAILED\n"); results.push(false); }
+            _ => {
+                tracing::info!("❌ FAILED\n");
+                results.push(false);
+            }
         }
         tokio::time::sleep(Duration::from_secs(2)).await;
     } else {
@@ -143,7 +188,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 // Cancel cleanup
                 tokio::time::sleep(Duration::from_secs(1)).await;
-                if let Ok(c) = tx_client.cancel_order(&CancelOrderTxReq { market_index: market, index: sl_idx }, None).await {
+                if let Ok(c) = tx_client
+                    .cancel_order(
+                        &CancelOrderTxReq {
+                            market_index: market,
+                            index: sl_idx,
+                        },
+                        None,
+                    )
+                    .await
+                {
                     let _ = tx_client.send_transaction(&c).await;
                 }
             }
@@ -151,15 +205,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 tracing::info!("❌ STOP LOSS - {}: {:?}\n", r.code, r.message);
                 results.push(false);
             }
-            _ => { tracing::info!("❌ FAILED\n"); results.push(false); }
+            _ => {
+                tracing::info!("❌ FAILED\n");
+                results.push(false);
+            }
         },
-        _ => { tracing::info!("❌ FAILED\n"); results.push(false); }
+        _ => {
+            tracing::info!("❌ FAILED\n");
+            results.push(false);
+        }
     }
     tokio::time::sleep(Duration::from_secs(2)).await;
 
     // TEST 6: CLOSE
     tracing::info!("TEST 6: Close position (reduce_only=true)...");
-    let close = tx_client.create_market_order(market, chrono::Utc::now().timestamp_millis(), tiny, 3_000_000_000, 1, true, None).await?;
+    let close = tx_client
+        .create_market_order(
+            market,
+            chrono::Utc::now().timestamp_millis(),
+            tiny,
+            3_000_000_000,
+            1,
+            true,
+            None,
+        )
+        .await?;
 
     match tx_client.send_transaction(&close).await {
         Ok(r) if r.code == 200 => {
@@ -170,7 +240,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             tracing::info!("❌ CLOSE - {}: {:?}\n", r.code, r.message);
             results.push(false);
         }
-        _ => { tracing::info!("❌ FAILED\n"); results.push(false); }
+        _ => {
+            tracing::info!("❌ FAILED\n");
+            results.push(false);
+        }
     }
 
     // RESULTS
@@ -179,7 +252,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("╚═══════════════════════════════════════════════════════════╝\n");
 
     let passed = results.iter().filter(|&&x| x).count();
-    let labels = vec!["1. Open Position", "2. Limit Order", "3. Modify Order", "4. Cancel Order", "5. Stop Loss", "6. Close Position"];
+    let labels = vec![
+        "1. Open Position",
+        "2. Limit Order",
+        "3. Modify Order",
+        "4. Cancel Order",
+        "5. Stop Loss",
+        "6. Close Position",
+    ];
 
     for (i, label) in labels.iter().enumerate() {
         tracing::info!("{} {}", if results[i] { "✅" } else { "❌" }, label);
