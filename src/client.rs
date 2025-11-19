@@ -78,6 +78,10 @@ impl HTTPClient {
             tx_info: tx_info.to_string(),
         };
 
+        // Debug: print request
+        let request_json = serde_json::to_string(&request_body)?;
+        eprintln!("DEBUG - Sending request: {}", request_json);
+
         let response = self.client.post(&url).json(&request_body).send().await?;
 
         if !response.status().is_success() {
@@ -664,6 +668,36 @@ impl TxClient {
     }
 
     // ========== Helper Methods ==========
+
+    /// Create a limit order (convenience wrapper around create_order)
+    ///
+    /// Limit orders are placed on the order book at a specific price
+    #[allow(clippy::too_many_arguments)]
+    pub async fn create_limit_order(
+        &self,
+        market_index: u8,
+        client_order_index: i64,
+        base_amount: i64,
+        price: u32,
+        is_ask: u8,
+        reduce_only: bool,
+        opts: Option<TransactOpts>,
+    ) -> Result<L2CreateOrderTxInfo> {
+        let req = CreateOrderTxReq {
+            market_index,
+            client_order_index,
+            base_amount,
+            price,
+            is_ask,
+            order_type: ORDER_TYPE_LIMIT,
+            time_in_force: TIME_IN_FORCE_GOOD_TILL_TIME,
+            reduce_only: if reduce_only { 1 } else { 0 },
+            trigger_price: 0,
+            order_expiry: 0,
+        };
+
+        self.create_order(&req, opts).await
+    }
 
     /// Create a market order (convenience wrapper around create_order)
     ///

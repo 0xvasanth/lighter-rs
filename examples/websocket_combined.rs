@@ -26,11 +26,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Configuration:");
     println!("  Markets: 0, 1");
     println!("  Account: {}", account_index);
-    println!("  WebSocket: wss://api-testnet.lighter.xyz/stream\n");
+    // println!("  WebSocket: wss://api-testnet.lighter.xyz/stream\n");
 
     // Create WebSocket client with both subscriptions
     let client = WsClient::builder()
-        .host("api-testnet.lighter.xyz")
+        .host("mainnet.zklighter.elliot.ai")
         .order_books(vec![0, 1])
         .accounts(vec![account_index])
         .build()?;

@@ -111,8 +111,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("╚═══════════════════════════════════════════════════╝\n");
 
     // Load configuration from environment
-    let api_key = env::var("LIGHTER_API_KEY")
-        .expect("LIGHTER_API_KEY not found. Did you create .env file?");
+    let api_key =
+        env::var("LIGHTER_API_KEY").expect("LIGHTER_API_KEY not found. Did you create .env file?");
 
     let account_index: i64 = env::var("LIGHTER_ACCOUNT_INDEX")
         .expect("LIGHTER_ACCOUNT_INDEX not set")
@@ -132,8 +132,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .parse()
         .unwrap_or(300);
 
-    let ws_host = env::var("LIGHTER_WS_HOST")
-        .unwrap_or_else(|_| "api-testnet.lighter.xyz".to_string());
+    let ws_host =
+        env::var("LIGHTER_WS_HOST").unwrap_or_else(|_| "api-testnet.lighter.xyz".to_string());
 
     println!("✓ Configuration loaded from .env");
     println!("  API URL: {}", api_url);
@@ -199,15 +199,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let (Some(best_ask), Some(best_bid)) =
                 (order_book.asks.first(), order_book.bids.first())
             {
-                if let (Ok(ask_price), Ok(bid_price)) = (
-                    best_ask.price.parse::<f64>(),
-                    best_bid.price.parse::<f64>(),
-                ) {
+                if let (Ok(ask_price), Ok(bid_price)) =
+                    (best_ask.price.parse::<f64>(), best_bid.price.parse::<f64>())
+                {
                     let spread = ask_price - bid_price;
                     let spread_bps = (spread / bid_price) * 10000.0;
                     let mid_price = (ask_price + bid_price) / 2.0;
 
-                    println!("  Ask: {:.2} | Bid: {:.2} | Mid: {:.2}", ask_price, bid_price, mid_price);
+                    println!(
+                        "  Ask: {:.2} | Bid: {:.2} | Mid: {:.2}",
+                        ask_price, bid_price, mid_price
+                    );
                     println!("  Spread: {:.4} ({:.2} bps)", spread, spread_bps);
 
                     // Trading logic: Only trade if circuit is closed or half-open
@@ -216,7 +218,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                         // Limit total orders for demo
                         if count < 3 {
-                            println!("\n  🎯 TRADING SIGNAL: Spread {:.2} bps >= {:.2} bps", spread_bps, MIN_SPREAD_BPS);
+                            println!(
+                                "\n  🎯 TRADING SIGNAL: Spread {:.2} bps >= {:.2} bps",
+                                spread_bps, MIN_SPREAD_BPS
+                            );
                             println!("     Placing order #{}", count + 1);
 
                             // Place a small market buy order
@@ -224,9 +229,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 .create_market_order(
                                     market_id_num,
                                     chrono::Utc::now().timestamp_millis(),
-                                    100_000, // Small size for demo
+                                    100_000,                   // Small size for demo
                                     (mid_price * 1.01) as u32, // 1% slippage tolerance
-                                    0,       // BUY
+                                    0,                         // BUY
                                     false,
                                     None,
                                 )
@@ -247,7 +252,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                                 cb.record_success().await;
                                                 order_count.fetch_add(1, Ordering::Relaxed);
                                             } else {
-                                                println!("     ✗ Order rejected: {:?}", response.message);
+                                                println!(
+                                                    "     ✗ Order rejected: {:?}",
+                                                    response.message
+                                                );
                                                 cb.record_failure().await;
                                             }
                                         }
@@ -288,13 +296,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 for (i, order) in orders.iter().take(3).enumerate() {
                     if let Some(order_obj) = order.as_object() {
-                        let side = if order_obj.get("is_ask").and_then(|a| a.as_i64()).unwrap_or(0) == 1 {
+                        let side = if order_obj
+                            .get("is_ask")
+                            .and_then(|a| a.as_i64())
+                            .unwrap_or(0)
+                            == 1
+                        {
                             "SELL"
                         } else {
                             "BUY"
                         };
-                        let price = order_obj.get("price").and_then(|p| p.as_str()).unwrap_or("?");
-                        let size = order_obj.get("size").and_then(|s| s.as_str()).unwrap_or("?");
+                        let price = order_obj
+                            .get("price")
+                            .and_then(|p| p.as_str())
+                            .unwrap_or("?");
+                        let size = order_obj
+                            .get("size")
+                            .and_then(|s| s.as_str())
+                            .unwrap_or("?");
                         println!("    {}. {} {} @ {}", i + 1, side, size, price);
                     }
                 }

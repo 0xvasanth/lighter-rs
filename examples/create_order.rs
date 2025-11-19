@@ -1,78 +1,71 @@
-//! Example: Creating and signing a limit order
-//!
-//! This example demonstrates how to create a limit order transaction using the Lighter SDK.
-//!
-//! Run with: cargo run --example create_order
-
+use dotenv::dotenv;
 use lighter_rs::client::TxClient;
-use lighter_rs::constants::*;
-use lighter_rs::types::{CreateOrderTxReq, TxInfo};
+use lighter_rs::types::TxInfo;
+use std::env;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("=== Lighter RS: Create Order Example ===\n");
+    dotenv().ok();
 
-    // Initialize the transaction client
-    // Note: In production, use environment variables for sensitive data
+    // Load configuration from environment
+    let private_key =
+        env::var("LIGHTER_API_KEY").expect("LIGHTER_API_KEY must be set in .env file");
+    let account_index: i64 = env::var("LIGHTER_ACCOUNT_INDEX")
+        .expect("LIGHTER_ACCOUNT_INDEX must be set in .env file")
+        .parse()
+        .expect("LIGHTER_ACCOUNT_INDEX must be a valid number");
+    let api_key_index: u8 = env::var("LIGHTER_API_KEY_INDEX")
+        .unwrap_or_else(|_| "0".to_string())
+        .parse()
+        .expect("LIGHTER_API_KEY_INDEX must be a valid number");
+
+    let api_url = env::var("LIGHTER_API_URL").expect("LIGHTER_API_URL must be set in .env file");
+
+    // Create transaction client
     let tx_client = TxClient::new(
-        "", // Empty string disables API calls (offline mode)
-        "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
-        12345, // Your account index
-        0,     // API key index
-        1,     // Chain ID
+        &api_url,
+        &private_key,
+        account_index,
+        api_key_index,
+        304, // 304 = Mainnet, 300 = Testnet
     )?;
 
-    println!("✓ Transaction client initialized");
-    println!("  Account Index: {}", tx_client.account_index());
-    println!("  API Key Index: {}\n", tx_client.api_key_index());
+    let market_index = 0u8; // Market 0 = ETH
+    let mid_price = 3000_00; // Price protection for market order
 
-    // Create a buy limit order
-    let order_req = CreateOrderTxReq {
-        market_index: 0,
-        client_order_index: 1,
-        base_amount: 1000000, // 1 unit (6 decimals)
-        price: 100000000,     // Price with proper decimals
-        is_ask: 0,            // 0 = buy, 1 = sell
-        order_type: ORDER_TYPE_LIMIT,
-        time_in_force: TIME_IN_FORCE_GOOD_TILL_TIME,
-        reduce_only: 0,
-        trigger_price: 0,
-        order_expiry: 0,
-    };
+    println!("Creating market order...");
 
-    println!("Order Details:");
-    println!("  Market Index: {}", order_req.market_index);
-    println!(
-        "  Side: {}",
-        if order_req.is_ask == 0 { "BUY" } else { "SELL" }
-    );
-    println!("  Amount: {}", order_req.base_amount);
-    println!("  Price: {}", order_req.price);
-    println!("  Order Type: LIMIT");
-    println!();
-
-    // Create transaction options with manual nonce (since we're in offline mode)
-    use lighter_rs::types::TransactOpts;
-    let opts = TransactOpts {
-        from_account_index: Some(tx_client.account_index()),
-        api_key_index: Some(tx_client.api_key_index()),
-        expired_at: 1000000000,
-        nonce: Some(1),
-        dry_run: false,
-    };
-
-    // Sign the transaction
-    let tx = tx_client.create_order(&order_req, Some(opts)).await?;
-
-    println!("✓ Transaction signed successfully");
-    println!("  Transaction Type: {}", tx.get_tx_type());
-    println!("  Account Index: {}", tx.account_index);
-    println!("  Nonce: {}", tx.nonce);
-    if let Some(hash) = tx.get_tx_hash() {
-        println!("  Transaction Hash: {}", hash);
+    // Create and submit market order
+    match tx_client
+        .create_market_order(
+            market_index,
+            chrono::Utc::now().timestamp_millis(),
+            100_000, // Small size for demo
+            mid_price,
+            0,     // BUY (0 = buy, 1 = sell)
+            false, // not reduce-only
+            None,
+        )
+        .await
+    {
+        Ok(order) => {
+            println!("  ✓ Order created and signed");
+            match tx_client.send_transaction(&order).await {
+                Ok(response) => {
+                    if response.code == 200 {
+                        println!("  ✓ Order submitted successfully!");
+                        if let Some(hash) = response.tx_hash {
+                            println!("    Tx Hash: {}", hash);
+                        }
+                    } else {
+                        println!("  ✗ Order failed: {:?}", response.message);
+                    }
+                }
+                Err(e) => println!("  ✗ Submit error: {}", e),
+            }
+        }
+        Err(e) => println!("  ✗ Order creation error: {}", e),
     }
-
-    println!("\n✓ Example completed successfully!");
 
     Ok(())
 }

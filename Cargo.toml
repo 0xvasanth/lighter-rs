@@ -38,6 +38,7 @@ chrono = "0.4"
 # Numeric types
 num-bigint = "0.4"
 num-traits = "0.2"
+dotenv = "0.15"
 
 [dev-dependencies]
 tokio-test = "0.4"
