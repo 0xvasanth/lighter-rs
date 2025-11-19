@@ -25,7 +25,7 @@ impl HTTPClient {
         Ok(Self {
             client,
             endpoint: base_url.to_string(),
-            fat_finger_protection: true,
+            fat_finger_protection: false, // Try without price protection
         })
     }
 

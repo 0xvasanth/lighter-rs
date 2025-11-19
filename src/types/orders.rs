@@ -29,9 +29,38 @@ pub struct L2CreateOrderTxInfo {
     pub expired_at: i64,
     pub nonce: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(with = "hex_serde", default)]
     pub sig: Option<Vec<u8>>,
     #[serde(skip)]
     pub signed_hash: Option<String>,
+}
+
+// Helper module for hex serialization of signature
+mod hex_serde {
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(bytes: &Option<Vec<u8>>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match bytes {
+            Some(vec) => serializer.serialize_str(&hex::encode(vec)),
+            None => serializer.serialize_none(),
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Vec<u8>>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s: Option<String> = Option::deserialize(deserializer)?;
+        match s {
+            Some(hex_str) => hex::decode(&hex_str)
+                .map(Some)
+                .map_err(serde::de::Error::custom),
+            None => Ok(None),
+        }
+    }
 }
 
 impl TxInfo for L2CreateOrderTxInfo {
