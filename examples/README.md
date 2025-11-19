@@ -194,6 +194,200 @@ After running the examples:
 3. **Join the community**: [Lighter Discord](https://discord.gg/lighter)
 4. **Read the docs**: See the main README.md for detailed documentation
 
+---
+
+## 🧪 Testing & Verification Examples
+
+### **safe_trade_test.rs** - Safe Trade Lifecycle Test ⭐ START HERE
+**Purpose:** Verify your API credentials work with zero risk of losing money.
+
+**What it does:**
+- Places a limit order FAR from market price (won't execute)
+- Verifies order placement
+- Cancels the order immediately
+- Tests complete trading workflow safely
+
+```bash
+cargo run --example safe_trade_test
+```
+
+**Expected with Valid Credentials:**
+```
+✅ ORDER PLACED SUCCESSFULLY!
+✅ ORDER CANCELLED SUCCESSFULLY!
+🎉 Your Lighter API is working correctly!
+```
+
+**Expected with Test Credentials:**
+```
+❌ Order NOT placed (invalid credentials)
+✅ SDK works correctly (signatures valid)
+💡 Register API key at https://app.lighter.xyz
+```
+
+---
+
+### **complete_trade_workflow.rs** - Full Lifecycle Test
+Comprehensive test with step-by-step verification:
+
+```bash
+cargo run --example complete_trade_workflow
+```
+
+Features:
+- Detailed step-by-step output
+- Market selection
+- Order creation & signing
+- Signature verification
+- Order placement
+- Order cancellation
+- Complete status reporting
+
+---
+
+### **verify_signing_works.rs** - Signature Verification
+Proves that Poseidon/Schnorr signing is implemented correctly:
+
+```bash
+cargo run --example verify_signing_works
+```
+
+**Key Output:**
+```
+✅ Signature contains non-zero bytes (cryptographically signed!)
+✅ Signature has good entropy (70+ unique values)
+✅ Poseidon signing is IMPLEMENTED
+Issue #4 Status: RESOLVED ✅
+```
+
+---
+
+## 🔧 Diagnostic Tools
+
+### **diagnose_api_errors.rs** - Error Diagnosis
+Diagnoses common API errors and provides solutions:
+
+```bash
+cargo run --example diagnose_api_errors
+```
+
+**Helps with:**
+- "invalid base amount" errors
+- "api key not found" errors
+- Configuration validation
+- Credential verification
+- Base amount testing
+
+---
+
+### **test_crypto_api.rs** - Crypto Library Explorer
+Explores goldilocks-crypto and poseidon-hash APIs:
+
+```bash
+cargo run --example test_crypto_api
+```
+
+Shows:
+- Private/public key generation
+- Poseidon hash creation
+- Message signing
+- Signature verification
+
+---
+
+## 📊 Strategy Examples
+
+### **grid_trading_example.rs** - Grid Trading Bot
+Example implementation of a grid trading strategy:
+
+```bash
+cargo run --example grid_trading_example
+```
+
+Features:
+- Multiple price levels
+- Automated buy/sell orders
+- Configurable grid parameters
+- Safe testing with low prices
+
+---
+
+## 🆘 Troubleshooting Examples
+
+### Common Error: "invalid base amount" (21701)
+
+**Run diagnosis:**
+```bash
+cargo run --example diagnose_api_errors
+```
+
+**Common Causes:**
+1. API key not registered → Register at https://app.lighter.xyz
+2. Insufficient balance → Deposit funds
+3. Below minimum order size → Check market specs
+
+**See:** [TROUBLESHOOTING.md](../TROUBLESHOOTING.md)
+
+---
+
+### Common Error: "api key not found" (21109)
+
+**This means your API key is not registered.**
+
+**Fix:**
+1. Go to https://app.lighter.xyz
+2. Settings → API Keys
+3. Generate new API key
+4. Update .env:
+   ```bash
+   LIGHTER_API_KEY=<new-key-no-0x-prefix>
+   LIGHTER_ACCOUNT_INDEX=<your-account-index>
+   LIGHTER_API_KEY_INDEX=<usually-0-1-or-2>
+   ```
+
+---
+
+## 📝 Example Usage Summary
+
+| Example | Purpose | Risk | Credentials Required |
+|---------|---------|------|---------------------|
+| `verify_signing_works` | Verify SDK | None | No |
+| `test_crypto_api` | Explore crypto libs | None | No |
+| `safe_trade_test` | Test API | None | Yes |
+| `complete_trade_workflow` | Full test | None | Yes |
+| `diagnose_api_errors` | Debug errors | None | Optional |
+| `grid_trading_example` | Strategy demo | Low | Yes |
+| `test_all_functions` | SDK functions | None | Optional |
+
+---
+
+## 🎓 Recommended Learning Path
+
+### Step 1: Verify SDK Works (No Credentials Needed)
+```bash
+cargo run --example verify_signing_works
+cargo run --example test_crypto_api
+```
+
+### Step 2: Get API Credentials
+1. Visit https://app.lighter.xyz
+2. Create account
+3. Generate API key
+4. Update .env file
+
+### Step 3: Test Your Credentials
+```bash
+cargo run --example safe_trade_test
+```
+
+### Step 4: Explore Advanced Features
+```bash
+cargo run --example complete_trade_workflow
+cargo run --example grid_trading_example
+```
+
+---
+
 ## Contributing
 
 Found a bug or have a suggestion? Please open an issue or submit a PR!
