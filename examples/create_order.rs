@@ -1,6 +1,5 @@
 use dotenv::dotenv;
 use lighter_rs::client::TxClient;
-use lighter_rs::types::TxInfo;
 use std::env;
 
 #[tokio::main]
@@ -32,7 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )?;
 
     let market_index = 0u8; // Market 0 = ETH
-    let mid_price = 3000_00; // Price protection for market order
+    let mid_price = 300_000; // Price protection for market order
 
     tracing::info!("Creating market order...");
 

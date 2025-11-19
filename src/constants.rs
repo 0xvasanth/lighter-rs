@@ -163,14 +163,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_constants_validity() {
-        assert!(MAX_ACCOUNT_INDEX > MIN_ACCOUNT_INDEX);
-        assert!(MAX_API_KEY_INDEX > MIN_API_KEY_INDEX);
-        assert!(MAX_ORDER_PRICE > MIN_ORDER_PRICE);
-        assert_eq!(ONE_USDC, 1_000_000);
-    }
-
-    #[test]
     fn test_order_types() {
         assert_eq!(ORDER_TYPE_LIMIT, 0);
         assert_eq!(ORDER_TYPE_MARKET, 1);

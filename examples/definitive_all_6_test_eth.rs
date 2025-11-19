@@ -252,18 +252,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("╚═══════════════════════════════════════════════════════════╝\n");
 
     let passed = results.iter().filter(|&&x| x).count();
-    let labels = vec![
-        "1. Open Position",
-        "2. Limit Order",
-        "3. Modify Order",
-        "4. Cancel Order",
-        "5. Stop Loss",
-        "6. Close Position",
-    ];
-
-    for (i, label) in labels.iter().enumerate() {
-        tracing::info!("{} {}", if results[i] { "✅" } else { "❌" }, label);
-    }
 
     tracing::info!("\n{}/{} OPERATIONS WORKING\n", passed, results.len());
 
