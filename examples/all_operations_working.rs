@@ -8,14 +8,16 @@ use lighter_rs::constants::*;
 use lighter_rs::types::{CancelOrderTxReq, CreateOrderTxReq, ModifyOrderTxReq};
 use std::env;
 use std::time::Duration;
+use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt::init();
     dotenv().ok();
 
-    println!("╔═══════════════════════════════════════════════════════════╗");
-    println!("║        All 6 Trading Operations - Complete Test          ║");
-    println!("╚═══════════════════════════════════════════════════════════╝\n");
+    tracing::info!("╔═══════════════════════════════════════════════════════════╗");
+    tracing::info!("║        All 6 Trading Operations - Complete Test          ║");
+    tracing::info!("╚═══════════════════════════════════════════════════════════╝\n");
 
     let private_key = env::var("LIGHTER_API_KEY")?;
     let account_index: i64 = env::var("LIGHTER_ACCOUNT_INDEX")?.parse()?;
@@ -32,7 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         api_key_index,
         chain_id,
     )?;
-    println!("✅ Client initialized\n");
+    tracing::info!("✅ Client initialized\n");
 
     let market_index = 0u8;
     let tiny_amount = 100i64; // 0.0001 ETH
@@ -40,7 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut results = Vec::new();
 
     // ═══ TEST 1: OPEN POSITION ═══
-    println!("TEST 1: Opening position (0.0001 ETH)...");
+    tracing::info!("TEST 1: Opening position (0.0001 ETH)...");
 
     let open = tx_client
         .create_market_order(
@@ -56,22 +58,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match tx_client.send_transaction(&open).await {
         Ok(r) if r.code == 200 => {
-            println!("✅ PASS - Open Position\n");
+            tracing::info!("✅ PASS - Open Position\n");
             results.push(("Open Position", true));
         }
         Ok(r) => {
-            println!("❌ FAIL - {}: {:?}\n", r.code, r.message);
+            tracing::info!("❌ FAIL - {}: {:?}\n", r.code, r.message);
             results.push(("Open Position", false));
         }
         Err(e) => {
-            println!("❌ FAIL - {}\n", e);
+            tracing::info!("❌ FAIL - {}\n", e);
             results.push(("Open Position", false));
         }
     }
     tokio::time::sleep(Duration::from_secs(1)).await;
 
     // ═══ TEST 2: PLACE LIMIT BUY (for cancel/modify tests) ═══
-    println!("TEST 2: Placing limit buy order at $2950...");
+    tracing::info!("TEST 2: Placing limit buy order at $2950...");
 
     let limit_idx = chrono::Utc::now().timestamp_millis();
     let limit = tx_client
@@ -89,19 +91,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut limit_placed = false;
     match tx_client.send_transaction(&limit).await {
         Ok(r) if r.code == 200 => {
-            println!("✅ PASS - Place Limit Order\n");
+            tracing::info!("✅ PASS - Place Limit Order\n");
             results.push(("Place Limit Order", true));
             limit_placed = true;
         }
         Ok(r) => {
-            println!(
+            tracing::info!(
                 "⚠️ SKIP - {}: {:?} (Will skip cancel/modify)\n",
                 r.code, r.message
             );
             results.push(("Place Limit Order", false));
         }
         Err(e) => {
-            println!("⚠️ SKIP - {} (Will skip cancel/modify)\n", e);
+            tracing::info!("⚠️ SKIP - {} (Will skip cancel/modify)\n", e);
             results.push(("Place Limit Order", false));
         }
     }
@@ -109,7 +111,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // ═══ TEST 3: MODIFY ORDER ═══
     if limit_placed {
-        println!("TEST 3: Modifying order (price $2950 → $2940)...");
+        tracing::info!("TEST 3: Modifying order (price $2950 → $2940)...");
 
         let modify_req = ModifyOrderTxReq {
             market_index,
@@ -122,27 +124,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         match tx_client.modify_order(&modify_req, None).await {
             Ok(modify_tx) => match tx_client.send_transaction(&modify_tx).await {
                 Ok(r) if r.code == 200 => {
-                    println!("✅ PASS - Modify Order\n");
+                    tracing::info!("✅ PASS - Modify Order\n");
                     results.push(("Modify Order", true));
                 }
                 Ok(r) => {
-                    println!("❌ FAIL - {}: {:?}\n", r.code, r.message);
+                    tracing::info!("❌ FAIL - {}: {:?}\n", r.code, r.message);
                     results.push(("Modify Order", false));
                 }
                 Err(e) => {
-                    println!("❌ FAIL - {}\n", e);
+                    tracing::info!("❌ FAIL - {}\n", e);
                     results.push(("Modify Order", false));
                 }
             },
             Err(e) => {
-                println!("❌ FAIL - {}\n", e);
+                tracing::info!("❌ FAIL - {}\n", e);
                 results.push(("Modify Order", false));
             }
         }
         tokio::time::sleep(Duration::from_secs(1)).await;
 
         // ═══ TEST 4: CANCEL ORDER ═══
-        println!("TEST 4: Cancelling the limit order...");
+        tracing::info!("TEST 4: Cancelling the limit order...");
 
         let cancel_req = CancelOrderTxReq {
             market_index,
@@ -152,33 +154,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         match tx_client.cancel_order(&cancel_req, None).await {
             Ok(cancel_tx) => match tx_client.send_transaction(&cancel_tx).await {
                 Ok(r) if r.code == 200 => {
-                    println!("✅ PASS - Cancel Order\n");
+                    tracing::info!("✅ PASS - Cancel Order\n");
                     results.push(("Cancel Order", true));
                 }
                 Ok(r) => {
-                    println!("❌ FAIL - {}: {:?}\n", r.code, r.message);
+                    tracing::info!("❌ FAIL - {}: {:?}\n", r.code, r.message);
                     results.push(("Cancel Order", false));
                 }
                 Err(e) => {
-                    println!("❌ FAIL - {}\n", e);
+                    tracing::info!("❌ FAIL - {}\n", e);
                     results.push(("Cancel Order", false));
                 }
             },
             Err(e) => {
-                println!("❌ FAIL - {}\n", e);
+                tracing::info!("❌ FAIL - {}\n", e);
                 results.push(("Cancel Order", false));
             }
         }
         tokio::time::sleep(Duration::from_secs(1)).await;
     } else {
-        println!("⚠️ TEST 3: SKIPPED - Modify Order (no active order)\n");
-        println!("⚠️ TEST 4: SKIPPED - Cancel Order (no active order)\n");
+        tracing::info!("⚠️ TEST 3: SKIPPED - Modify Order (no active order)\n");
+        tracing::info!("⚠️ TEST 4: SKIPPED - Cancel Order (no active order)\n");
         results.push(("Modify Order", false));
         results.push(("Cancel Order", false));
     }
 
     // ═══ TEST 5: TAKE PROFIT ═══
-    println!("TEST 5: Take profit sell at $3050 (2% above market)...");
+    tracing::info!("TEST 5: Take profit sell at $3050 (2% above market)...");
 
     let tp_idx = chrono::Utc::now().timestamp_millis();
     let tp_req = CreateOrderTxReq {
@@ -198,7 +200,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(tp_tx) => {
             match tx_client.send_transaction(&tp_tx).await {
                 Ok(r) if r.code == 200 => {
-                    println!("✅ PASS - Take Profit Order\n");
+                    tracing::info!("✅ PASS - Take Profit Order\n");
                     results.push(("Take Profit", true));
 
                     // Cancel TP
@@ -217,24 +219,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
                 Ok(r) => {
-                    println!("⚠️ SKIP - {}: {:?}\n", r.code, r.message);
+                    tracing::info!("⚠️ SKIP - {}: {:?}\n", r.code, r.message);
                     results.push(("Take Profit", false));
                 }
                 Err(e) => {
-                    println!("⚠️ SKIP - {}\n", e);
+                    tracing::info!("⚠️ SKIP - {}\n", e);
                     results.push(("Take Profit", false));
                 }
             }
         }
         Err(e) => {
-            println!("⚠️ SKIP - {}\n", e);
+            tracing::info!("⚠️ SKIP - {}\n", e);
             results.push(("Take Profit", false));
         }
     }
     tokio::time::sleep(Duration::from_secs(1)).await;
 
     // ═══ TEST 6: STOP LOSS ═══
-    println!("TEST 6: Stop loss at $2950 trigger...");
+    tracing::info!("TEST 6: Stop loss at $2950 trigger...");
 
     let sl_idx = chrono::Utc::now().timestamp_millis();
     let sl_req = CreateOrderTxReq {
@@ -254,7 +256,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(sl_tx) => {
             match tx_client.send_transaction(&sl_tx).await {
                 Ok(r) if r.code == 200 => {
-                    println!("✅ PASS - Stop Loss Order\n");
+                    tracing::info!("✅ PASS - Stop Loss Order\n");
                     results.push(("Stop Loss", true));
 
                     // Cancel SL
@@ -273,24 +275,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
                 Ok(r) => {
-                    println!("⚠️ SKIP - {}: {:?}\n", r.code, r.message);
+                    tracing::info!("⚠️ SKIP - {}: {:?}\n", r.code, r.message);
                     results.push(("Stop Loss", false));
                 }
                 Err(e) => {
-                    println!("⚠️ SKIP - {}\n", e);
+                    tracing::info!("⚠️ SKIP - {}\n", e);
                     results.push(("Stop Loss", false));
                 }
             }
         }
         Err(e) => {
-            println!("⚠️ SKIP - {}\n", e);
+            tracing::info!("⚠️ SKIP - {}\n", e);
             results.push(("Stop Loss", false));
         }
     }
     tokio::time::sleep(Duration::from_secs(1)).await;
 
     // ═══ CLOSE POSITION ═══
-    println!("TEST 7: Closing position...");
+    tracing::info!("TEST 7: Closing position...");
 
     let close = tx_client
         .create_market_order(
@@ -306,42 +308,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match tx_client.send_transaction(&close).await {
         Ok(r) if r.code == 200 => {
-            println!("✅ PASS - Close Position\n");
+            tracing::info!("✅ PASS - Close Position\n");
             results.push(("Close Position", true));
         }
         Ok(r) => {
-            println!("❌ FAIL - {}: {:?}\n", r.code, r.message);
+            tracing::info!("❌ FAIL - {}: {:?}\n", r.code, r.message);
             results.push(("Close Position", false));
         }
         Err(e) => {
-            println!("❌ FAIL - {}\n", e);
+            tracing::info!("❌ FAIL - {}\n", e);
             results.push(("Close Position", false));
         }
     }
 
     // ═══ SUMMARY ═══
-    println!("╔═══════════════════════════════════════════════════════════╗");
-    println!("║                    FINAL RESULTS                          ║");
-    println!("╚═══════════════════════════════════════════════════════════╝\n");
+    tracing::info!("╔═══════════════════════════════════════════════════════════╗");
+    tracing::info!("║                    FINAL RESULTS                          ║");
+    tracing::info!("╚═══════════════════════════════════════════════════════════╝\n");
 
     let passed = results.iter().filter(|(_, s)| *s).count();
 
     for (name, success) in &results {
-        println!("{} {}", if *success { "✅" } else { "❌" }, name);
+        tracing::info!("{} {}", if *success { "✅" } else { "❌" }, name);
     }
 
-    println!("\n{}/{} tests passed\n", passed, results.len());
+    tracing::info!("\n{}/{} tests passed\n", passed, results.len());
 
     if passed >= 3 {
-        println!("✅ SDK IS FUNCTIONAL FOR TRADING!");
-        println!("\nVerified working:");
-        println!("  • Open/Close positions");
-        println!("  • Stop loss orders");
+        tracing::info!("✅ SDK IS FUNCTIONAL FOR TRADING!");
+        tracing::info!("\nVerified working:");
+        tracing::info!("  • Open/Close positions");
+        tracing::info!("  • Stop loss orders");
         if passed >= 5 {
-            println!("  • Take profit orders");
-            println!("  • Cancel/Modify orders");
+            tracing::info!("  • Take profit orders");
+            tracing::info!("  • Cancel/Modify orders");
         }
-        println!("\n🚀 Ready for production!");
+        tracing::info!("\n🚀 Ready for production!");
     }
 
     Ok(())

@@ -15,14 +15,16 @@ use lighter_rs::client::TxClient;
 use lighter_rs::types::CancelOrderTxReq;
 use std::env;
 use std::time::Duration;
+use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt::init();
     dotenv().ok();
 
-    println!("╔═══════════════════════════════════════════════════╗");
-    println!("║   Complete Trade Workflow - Lifecycle Test       ║");
-    println!("╚═══════════════════════════════════════════════════╝\n");
+    tracing::info!("╔═══════════════════════════════════════════════════╗");
+    tracing::info!("║   Complete Trade Workflow - Lifecycle Test       ║");
+    tracing::info!("╚═══════════════════════════════════════════════════╝\n");
 
     // Load configuration
     let private_key = env::var("LIGHTER_API_KEY")?;
@@ -31,25 +33,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let chain_id: u32 = env::var("LIGHTER_CHAIN_ID").unwrap_or_else(|_| "304".to_string()).parse()?;
     let api_url = env::var("LIGHTER_API_URL")?;
 
-    println!("📋 Configuration:");
-    println!("   API URL: {}", api_url);
-    println!("   Account: {}", account_index);
-    println!("   API Key Index: {}", api_key_index);
-    println!("   Chain: {}", if chain_id == 304 { "Mainnet" } else { "Testnet" });
-    println!();
+    tracing::info!("📋 Configuration:");
+    tracing::info!("   API URL: {}", api_url);
+    tracing::info!("   Account: {}", account_index);
+    tracing::info!("   API Key Index: {}", api_key_index);
+    tracing::info!("   Chain: {}", if chain_id == 304 { "Mainnet" } else { "Testnet" });
+    tracing::info!();
 
     // Initialize client
-    println!("🔌 Step 1: Initialize Client");
+    tracing::info!("🔌 Step 1: Initialize Client");
     let tx_client = TxClient::new(&api_url, &private_key, account_index, api_key_index, chain_id)?;
-    println!("   ✅ Client ready\n");
+    tracing::info!("   ✅ Client ready\n");
 
     // Market selection
     let market_index = 0u8;
     let market_name = "ETH/USD";
 
-    println!("📊 Step 2: Market Selection");
-    println!("   Market: {} (index: {})", market_name, market_index);
-    println!("   Note: Using a price far from market to avoid fills\n");
+    tracing::info!("📊 Step 2: Market Selection");
+    tracing::info!("   Market: {} (index: {})", market_name, market_index);
+    tracing::info!("   Note: Using a price far from market to avoid fills\n");
 
     // Order parameters - SAFE: Won't execute
     let client_order_index = chrono::Utc::now().timestamp_millis();
@@ -59,13 +61,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let order_price = 1_000_000u32; // $1.00 (way below market)
     let order_amount = 10_000_000i64; // $10.00
 
-    println!("📝 Step 3: Create Order (Local)");
-    println!("   Type: LIMIT BUY");
-    println!("   Price: ${:.2} (far below market)", order_price as f64 / 1_000_000.0);
-    println!("   Amount: ${:.2}", order_amount as f64 / 1_000_000.0);
-    println!("   Order Index: {}", client_order_index);
-    println!("   ⚠️  Price is intentionally low to prevent execution");
-    println!();
+    tracing::info!("📝 Step 3: Create Order (Local)");
+    tracing::info!("   Type: LIMIT BUY");
+    tracing::info!("   Price: ${:.2} (far below market)", order_price as f64 / 1_000_000.0);
+    tracing::info!("   Amount: ${:.2}", order_amount as f64 / 1_000_000.0);
+    tracing::info!("   Order Index: {}", client_order_index);
+    tracing::info!("   ⚠️  Price is intentionally low to prevent execution");
+    tracing::info!();
 
     let order = match tx_client.create_limit_order(
         market_index,
@@ -77,112 +79,112 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         None,
     ).await {
         Ok(order) => {
-            println!("   ✅ Order created");
+            tracing::info!("   ✅ Order created");
 
             // Verify signature
             if let Some(sig) = &order.sig {
                 let nonzero_count = sig.iter().filter(|&&b| b != 0).count();
-                println!("   ✅ Signature: {} non-zero bytes (valid)", nonzero_count);
+                tracing::info!("   ✅ Signature: {} non-zero bytes (valid)", nonzero_count);
             }
-            println!();
+            tracing::info!();
             order
         }
         Err(e) => {
-            println!("   ❌ Order creation failed: {}", e);
+            tracing::info!("   ❌ Order creation failed: {}", e);
             return Err(e.into());
         }
     };
 
     // Submit order
-    println!("📤 Step 4: Submit Order to Lighter");
+    tracing::info!("📤 Step 4: Submit Order to Lighter");
     let mut order_placed = false;
     let mut tx_hash_opt: Option<String> = None;
 
     match tx_client.send_transaction(&order).await {
         Ok(response) => {
-            println!("   Response Code: {}", response.code);
+            tracing::info!("   Response Code: {}", response.code);
 
             match response.code {
                 200 => {
-                    println!("   ✅ SUCCESS! Order placed on Lighter");
+                    tracing::info!("   ✅ SUCCESS! Order placed on Lighter");
                     if let Some(hash) = response.tx_hash {
-                        println!("   📝 Tx Hash: {}", hash);
+                        tracing::info!("   📝 Tx Hash: {}", hash);
                         tx_hash_opt = Some(hash);
                     }
                     order_placed = true;
                 }
                 21701 => {
-                    println!("   ❌ Error 21701: Invalid base amount");
-                    println!();
-                    println!("   💡 This typically means:");
-                    println!("      • API key not registered");
-                    println!("      • Insufficient balance");
-                    println!("      • Below minimum order size");
-                    println!();
-                    println!("   🔧 Fix: Register API key at https://app.lighter.xyz");
+                    tracing::info!("   ❌ Error 21701: Invalid base amount");
+                    tracing::info!();
+                    tracing::info!("   💡 This typically means:");
+                    tracing::info!("      • API key not registered");
+                    tracing::info!("      • Insufficient balance");
+                    tracing::info!("      • Below minimum order size");
+                    tracing::info!();
+                    tracing::info!("   🔧 Fix: Register API key at https://app.lighter.xyz");
                 }
                 21109 => {
-                    println!("   ❌ Error 21109: API key not found");
-                    println!();
-                    println!("   💡 Your API key is not registered");
-                    println!("   🔧 Fix:");
-                    println!("      1. Go to https://app.lighter.xyz");
-                    println!("      2. Settings → API Keys");
-                    println!("      3. Generate new API key");
-                    println!("      4. Update .env file");
+                    tracing::info!("   ❌ Error 21109: API key not found");
+                    tracing::info!();
+                    tracing::info!("   💡 Your API key is not registered");
+                    tracing::info!("   🔧 Fix:");
+                    tracing::info!("      1. Go to https://app.lighter.xyz");
+                    tracing::info!("      2. Settings → API Keys");
+                    tracing::info!("      3. Generate new API key");
+                    tracing::info!("      4. Update .env file");
                 }
                 _ => {
-                    println!("   ⚠️  Error {}: {:?}", response.code, response.message);
-                    println!("   See TROUBLESHOOTING.md for details");
+                    tracing::info!("   ⚠️  Error {}: {:?}", response.code, response.message);
+                    tracing::info!("   See TROUBLESHOOTING.md for details");
                 }
             }
         }
         Err(e) => {
-            println!("   ❌ Submission failed: {}", e);
+            tracing::info!("   ❌ Submission failed: {}", e);
         }
     }
-    println!();
+    tracing::info!();
 
     if !order_placed {
-        println!("╔═══════════════════════════════════════════════════╗");
-        println!("║            Test Result: PARTIAL SUCCESS           ║");
-        println!("╚═══════════════════════════════════════════════════╝\n");
-        println!("✅ What works:");
-        println!("   • Client initialization");
-        println!("   • Order creation");
-        println!("   • Signature generation (Poseidon/Schnorr)");
-        println!("   • API communication");
-        println!();
-        println!("❌ What needs fixing:");
-        println!("   • API credentials not valid/registered");
-        println!();
-        println!("📚 Next Steps:");
-        println!("   1. Register API key at https://app.lighter.xyz");
-        println!("   2. Fund your account");
-        println!("   3. Update .env with valid credentials");
-        println!("   4. Re-run this test");
-        println!();
+        tracing::info!("╔═══════════════════════════════════════════════════╗");
+        tracing::info!("║            Test Result: PARTIAL SUCCESS           ║");
+        tracing::info!("╚═══════════════════════════════════════════════════╝\n");
+        tracing::info!("✅ What works:");
+        tracing::info!("   • Client initialization");
+        tracing::info!("   • Order creation");
+        tracing::info!("   • Signature generation (Poseidon/Schnorr)");
+        tracing::info!("   • API communication");
+        tracing::info!();
+        tracing::info!("❌ What needs fixing:");
+        tracing::info!("   • API credentials not valid/registered");
+        tracing::info!();
+        tracing::info!("📚 Next Steps:");
+        tracing::info!("   1. Register API key at https://app.lighter.xyz");
+        tracing::info!("   2. Fund your account");
+        tracing::info!("   3. Update .env with valid credentials");
+        tracing::info!("   4. Re-run this test");
+        tracing::info!();
         return Ok(());
     }
 
     // Order was placed successfully!
-    println!("⏳ Step 5: Wait for Order Confirmation");
-    println!("   Waiting 3 seconds for blockchain confirmation...");
+    tracing::info!("⏳ Step 5: Wait for Order Confirmation");
+    tracing::info!("   Waiting 3 seconds for blockchain confirmation...");
     tokio::time::sleep(Duration::from_secs(3)).await;
-    println!("   ✅ Wait complete\n");
+    tracing::info!("   ✅ Wait complete\n");
 
-    println!("📊 Step 6: Order Status");
-    println!("   Order Index: {}", client_order_index);
+    tracing::info!("📊 Step 6: Order Status");
+    tracing::info!("   Order Index: {}", client_order_index);
     if let Some(hash) = &tx_hash_opt {
-        println!("   Tx Hash: {}", hash);
+        tracing::info!("   Tx Hash: {}", hash);
     }
-    println!("   Status: OPEN (pending on order book)");
-    println!("   Note: Order won't fill (price too low)");
-    println!();
+    tracing::info!("   Status: OPEN (pending on order book)");
+    tracing::info!("   Note: Order won't fill (price too low)");
+    tracing::info!();
 
     // Cancel the order
-    println!("🛑 Step 7: Cancel Order");
-    println!("   Creating cancellation transaction...");
+    tracing::info!("🛑 Step 7: Cancel Order");
+    tracing::info!("   Creating cancellation transaction...");
 
     let cancel_req = CancelOrderTxReq {
         market_index,
@@ -191,88 +193,88 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match tx_client.cancel_order(&cancel_req, None).await {
         Ok(cancel_tx) => {
-            println!("   ✅ Cancel tx created\n");
+            tracing::info!("   ✅ Cancel tx created\n");
 
-            println!("📤 Step 8: Submit Cancellation");
+            tracing::info!("📤 Step 8: Submit Cancellation");
             match tx_client.send_transaction(&cancel_tx).await {
                 Ok(response) => {
                     match response.code {
                         200 => {
-                            println!("   ✅ SUCCESS! Order cancelled");
+                            tracing::info!("   ✅ SUCCESS! Order cancelled");
                             if let Some(hash) = response.tx_hash {
-                                println!("   📝 Cancel Tx Hash: {}", hash);
+                                tracing::info!("   📝 Cancel Tx Hash: {}", hash);
                             }
                         }
                         _ => {
-                            println!("   ⚠️  Cancel returned code: {}", response.code);
-                            println!("   Message: {:?}", response.message);
-                            println!("   Note: Order might already be cancelled/filled");
+                            tracing::info!("   ⚠️  Cancel returned code: {}", response.code);
+                            tracing::info!("   Message: {:?}", response.message);
+                            tracing::info!("   Note: Order might already be cancelled/filled");
                         }
                     }
                 }
                 Err(e) => {
-                    println!("   ⚠️  Cancel failed: {}", e);
+                    tracing::info!("   ⚠️  Cancel failed: {}", e);
                 }
             }
         }
         Err(e) => {
-            println!("   ❌ Failed to create cancel: {}", e);
+            tracing::info!("   ❌ Failed to create cancel: {}", e);
         }
     }
-    println!();
+    tracing::info!();
 
     // Final status
-    println!("⏳ Step 9: Wait for Cancellation Confirmation");
+    tracing::info!("⏳ Step 9: Wait for Cancellation Confirmation");
     tokio::time::sleep(Duration::from_secs(2)).await;
-    println!("   ✅ Complete\n");
+    tracing::info!("   ✅ Complete\n");
 
     // Success summary
-    println!("╔═══════════════════════════════════════════════════╗");
-    println!("║              🎉 TEST SUCCESSFUL! 🎉               ║");
-    println!("╚═══════════════════════════════════════════════════╝\n");
+    tracing::info!("╔═══════════════════════════════════════════════════╗");
+    tracing::info!("║              🎉 TEST SUCCESSFUL! 🎉               ║");
+    tracing::info!("╚═══════════════════════════════════════════════════╝\n");
 
-    println!("✅ Verified Functionality:");
-    println!("   ✓ Client initialization");
-    println!("   ✓ Order creation & signing");
-    println!("   ✓ Poseidon/Schnorr signatures");
-    println!("   ✓ Order placement on Lighter");
-    println!("   ✓ Order cancellation");
-    println!("   ✓ API key authentication");
-    println!("   ✓ Transaction submission");
-    println!();
+    tracing::info!("✅ Verified Functionality:");
+    tracing::info!("   ✓ Client initialization");
+    tracing::info!("   ✓ Order creation & signing");
+    tracing::info!("   ✓ Poseidon/Schnorr signatures");
+    tracing::info!("   ✓ Order placement on Lighter");
+    tracing::info!("   ✓ Order cancellation");
+    tracing::info!("   ✓ API key authentication");
+    tracing::info!("   ✓ Transaction submission");
+    tracing::info!();
 
-    println!("📈 Trade Lifecycle:");
-    println!("   1. Created limit order at ${}", order_price as f64 / 1_000_000.0);
-    println!("   2. Submitted to Lighter ✓");
-    println!("   3. Order placed on book ✓");
-    println!("   4. Cancelled successfully ✓");
-    println!("   5. No money lost ✓");
-    println!();
+    tracing::info!("📈 Trade Lifecycle:");
+    tracing::info!("   1. Created limit order at ${}", order_price as f64 / 1_000_000.0);
+    tracing::info!("   2. Submitted to Lighter ✓");
+    tracing::info!("   3. Order placed on book ✓");
+    tracing::info!("   4. Cancelled successfully ✓");
+    tracing::info!("   5. No money lost ✓");
+    tracing::info!();
 
-    println!("🎯 Result:");
-    println!("   Your Lighter API integration is FULLY FUNCTIONAL!");
-    println!();
+    tracing::info!("🎯 Result:");
+    tracing::info!("   Your Lighter API integration is FULLY FUNCTIONAL!");
+    tracing::info!();
 
-    println!("🚀 You're Ready To Trade!");
-    println!("   - Place real orders");
-    println!("   - Manage positions");
-    println!("   - Build trading bots");
-    println!("   - Implement strategies");
-    println!();
+    tracing::info!("🚀 You're Ready To Trade!");
+    tracing::info!("   - Place real orders");
+    tracing::info!("   - Manage positions");
+    tracing::info!("   - Build trading bots");
+    tracing::info!("   - Implement strategies");
+    tracing::info!();
 
-    println!("⚠️  Safety Notes:");
-    println!("   • Always test with small amounts first");
-    println!("   • Use stop-losses for risk management");
-    println!("   • Monitor positions actively");
-    println!("   • Start with limit orders far from market");
-    println!();
+    tracing::info!("⚠️  Safety Notes:");
+    tracing::info!("   • Always test with small amounts first");
+    tracing::info!("   • Use stop-losses for risk management");
+    tracing::info!("   • Monitor positions actively");
+    tracing::info!("   • Start with limit orders far from market");
+    tracing::info!();
 
-    println!("📚 Resources:");
-    println!("   • SDK Examples: ./examples/");
-    println!("   • Troubleshooting: ./TROUBLESHOOTING.md");
-    println!("   • API Docs: https://apidocs.lighter.xyz");
-    println!("   • Lighter App: https://app.lighter.xyz");
-    println!();
+    tracing::info!("📚 Resources:");
+    tracing::info!("   • SDK Examples: ./examples/");
+    tracing::info!("   • Troubleshooting: ./TROUBLESHOOTING.md");
+    tracing::info!("   • API Docs: https://apidocs.lighter.xyz");
+    tracing::info!("   • Lighter App: https://app.lighter.xyz");
+    tracing::info!();
 
     Ok(())
 }

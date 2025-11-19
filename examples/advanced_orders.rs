@@ -7,13 +7,15 @@
 use lighter_rs::client::TxClient;
 use lighter_rs::constants::*;
 use lighter_rs::types::{
+use tracing;
     CancelAllOrdersTxReq, CancelOrderTxReq, CreateGroupedOrdersTxReq, CreateOrderTxReq,
     ModifyOrderTxReq, TransactOpts,
 };
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("=== Lighter RS: Advanced Orders Example ===\n");
+    tracing_subscriber::fmt::init();
+    tracing::info!("=== Lighter RS: Advanced Orders Example ===\n");
 
     // Initialize the transaction client
     let tx_client = TxClient::new(
@@ -24,10 +26,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         1,
     )?;
 
-    println!("✓ Transaction client initialized\n");
+    tracing::info!("✓ Transaction client initialized\n");
 
     // Example 1: Cancel an order
-    println!("=== Canceling Order ===");
+    tracing::info!("=== Canceling Order ===");
     let cancel_req = CancelOrderTxReq {
         market_index: 0,
         index: 123456,
@@ -45,12 +47,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .cancel_order(&cancel_req, Some(opts.clone()))
         .await?;
 
-    println!("✓ Cancel order transaction signed");
-    println!("  Market: {}", cancel_req.market_index);
-    println!("  Order Index: {}\n", cancel_req.index);
+    tracing::info!("✓ Cancel order transaction signed");
+    tracing::info!("  Market: {}", cancel_req.market_index);
+    tracing::info!("  Order Index: {}\n", cancel_req.index);
 
     // Example 2: Modify an order
-    println!("=== Modifying Order ===");
+    tracing::info!("=== Modifying Order ===");
     let modify_req = ModifyOrderTxReq {
         market_index: 0,
         index: 123456,
@@ -64,13 +66,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let _modify_tx = tx_client.modify_order(&modify_req, Some(opts2)).await?;
 
-    println!("✓ Modify order transaction signed");
-    println!("  Order Index: {}", modify_req.index);
-    println!("  New Amount: {}", modify_req.base_amount);
-    println!("  New Price: {}\n", modify_req.price);
+    tracing::info!("✓ Modify order transaction signed");
+    tracing::info!("  Order Index: {}", modify_req.index);
+    tracing::info!("  New Amount: {}", modify_req.base_amount);
+    tracing::info!("  New Price: {}\n", modify_req.price);
 
     // Example 3: Create grouped orders (OCO - One Cancels the Other)
-    println!("=== Creating Grouped Orders (OCO) ===");
+    tracing::info!("=== Creating Grouped Orders (OCO) ===");
     let order1 = CreateOrderTxReq {
         market_index: 0,
         client_order_index: 1,
@@ -109,12 +111,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .create_grouped_orders(&grouped_req, Some(opts3))
         .await?;
 
-    println!("✓ Grouped orders transaction signed");
-    println!("  Grouping Type: ONE_CANCELS_THE_OTHER");
-    println!("  Number of Orders: {}\n", grouped_req.orders.len());
+    tracing::info!("✓ Grouped orders transaction signed");
+    tracing::info!("  Grouping Type: ONE_CANCELS_THE_OTHER");
+    tracing::info!("  Number of Orders: {}\n", grouped_req.orders.len());
 
     // Example 4: Cancel all orders
-    println!("=== Cancel All Orders ===");
+    tracing::info!("=== Cancel All Orders ===");
     let cancel_all_req = CancelAllOrdersTxReq {
         time_in_force: CANCEL_ALL_IMMEDIATE,
         time: 1000000,
@@ -127,10 +129,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .cancel_all_orders(&cancel_all_req, Some(opts4))
         .await?;
 
-    println!("✓ Cancel all orders transaction signed");
-    println!("  Time in Force: IMMEDIATE");
+    tracing::info!("✓ Cancel all orders transaction signed");
+    tracing::info!("  Time in Force: IMMEDIATE");
 
-    println!("\n✓ All advanced order operations completed successfully!");
+    tracing::info!("\n✓ All advanced order operations completed successfully!");
 
     Ok(())
 }

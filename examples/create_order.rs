@@ -2,9 +2,11 @@ use dotenv::dotenv;
 use lighter_rs::client::TxClient;
 use lighter_rs::types::TxInfo;
 use std::env;
+use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt::init();
     dotenv().ok();
 
     // Load configuration from environment
@@ -33,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let market_index = 0u8; // Market 0 = ETH
     let mid_price = 3000_00; // Price protection for market order
 
-    println!("Creating market order...");
+    tracing::info!("Creating market order...");
 
     // Create and submit market order
     match tx_client
@@ -49,22 +51,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await
     {
         Ok(order) => {
-            println!("  ✓ Order created and signed");
+            tracing::info!("  ✓ Order created and signed");
             match tx_client.send_transaction(&order).await {
                 Ok(response) => {
                     if response.code == 200 {
-                        println!("  ✓ Order submitted successfully!");
+                        tracing::info!("  ✓ Order submitted successfully!");
                         if let Some(hash) = response.tx_hash {
-                            println!("    Tx Hash: {}", hash);
+                            tracing::info!("    Tx Hash: {}", hash);
                         }
                     } else {
-                        println!("  ✗ Order failed: {:?}", response.message);
+                        tracing::info!("  ✗ Order failed: {:?}", response.message);
                     }
                 }
-                Err(e) => println!("  ✗ Submit error: {}", e),
+                Err(e) => tracing::info!("  ✗ Submit error: {}", e),
             }
         }
-        Err(e) => println!("  ✗ Order creation error: {}", e),
+        Err(e) => tracing::info!("  ✗ Order creation error: {}", e),
     }
 
     Ok(())

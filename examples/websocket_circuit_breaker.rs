@@ -25,6 +25,7 @@ use std::env;
 use std::sync::atomic::{AtomicU32, AtomicU8, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+use tracing;
 
 // Circuit breaker states
 const CIRCUIT_CLOSED: u8 = 0; // Normal operation
@@ -63,19 +64,19 @@ impl CircuitBreaker {
     async fn record_success(&self) {
         self.failure_count.store(0, Ordering::Relaxed);
         self.state.store(CIRCUIT_CLOSED, Ordering::Relaxed);
-        println!("  ✓ Circuit Breaker: SUCCESS - Reset to CLOSED state");
+        tracing::info!("  ✓ Circuit Breaker: SUCCESS - Reset to CLOSED state");
     }
 
     async fn record_failure(&self) {
         let failures = self.failure_count.fetch_add(1, Ordering::Relaxed) + 1;
         *self.last_failure_time.write().await = Some(Instant::now());
 
-        println!("  ✗ Circuit Breaker: FAILURE {}/{}", failures, MAX_FAILURES);
+        tracing::info!("  ✗ Circuit Breaker: FAILURE {}/{}", failures, MAX_FAILURES);
 
         if failures >= MAX_FAILURES {
             self.state.store(CIRCUIT_OPEN, Ordering::Relaxed);
-            println!("  🔴 Circuit Breaker: OPENED (too many failures)");
-            println!("     Will retry in {:?}", CIRCUIT_TIMEOUT);
+            tracing::info!("  🔴 Circuit Breaker: OPENED (too many failures)");
+            tracing::info!("     Will retry in {:?}", CIRCUIT_TIMEOUT);
         }
     }
 
@@ -84,7 +85,7 @@ impl CircuitBreaker {
             if let Some(last_failure) = *self.last_failure_time.read().await {
                 if last_failure.elapsed() > CIRCUIT_TIMEOUT {
                     self.state.store(CIRCUIT_HALF_OPEN, Ordering::Relaxed);
-                    println!("  🟡 Circuit Breaker: HALF_OPEN (testing recovery)");
+                    tracing::info!("  🟡 Circuit Breaker: HALF_OPEN (testing recovery)");
                 }
             }
         }
@@ -102,13 +103,14 @@ impl CircuitBreaker {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt::init();
     // Load .env file
     dotenv().ok();
 
-    println!("╔═══════════════════════════════════════════════════╗");
-    println!("║   Lighter RS - Circuit Breaker Trading Bot       ║");
-    println!("║   Educational Example - Use at Your Own Risk!    ║");
-    println!("╚═══════════════════════════════════════════════════╝\n");
+    tracing::info!("╔═══════════════════════════════════════════════════╗");
+    tracing::info!("║   Lighter RS - Circuit Breaker Trading Bot       ║");
+    tracing::info!("║   Educational Example - Use at Your Own Risk!    ║");
+    tracing::info!("╚═══════════════════════════════════════════════════╝\n");
 
     // Load configuration from environment
     let api_key =
@@ -135,12 +137,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ws_host =
         env::var("LIGHTER_WS_HOST").unwrap_or_else(|_| "api-testnet.lighter.xyz".to_string());
 
-    println!("✓ Configuration loaded from .env");
-    println!("  API URL: {}", api_url);
-    println!("  WebSocket: wss://{}/stream", ws_host);
-    println!("  Account: {}", account_index);
-    println!("  Chain ID: {}", chain_id);
-    println!();
+    tracing::info!("✓ Configuration loaded from .env");
+    tracing::info!("  API URL: {}", api_url);
+    tracing::info!("  WebSocket: wss://{}/stream", ws_host);
+    tracing::info!("  Account: {}", account_index);
+    tracing::info!("  Chain ID: {}", chain_id);
+    tracing::info!();
 
     // Create trading client
     let tx_client = Arc::new(TxClient::new(
@@ -151,15 +153,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         chain_id,
     )?);
 
-    println!("✓ Trading client initialized");
+    tracing::info!("✓ Trading client initialized");
 
     // Create circuit breaker
     let circuit_breaker = Arc::new(CircuitBreaker::new());
 
-    println!("✓ Circuit breaker initialized");
-    println!("  Max failures: {}", MAX_FAILURES);
-    println!("  Timeout: {:?}", CIRCUIT_TIMEOUT);
-    println!("  Min spread: {} bps\n", MIN_SPREAD_BPS);
+    tracing::info!("✓ Circuit breaker initialized");
+    tracing::info!("  Max failures: {}", MAX_FAILURES);
+    tracing::info!("  Timeout: {:?}", CIRCUIT_TIMEOUT);
+    tracing::info!("  Min spread: {} bps\n", MIN_SPREAD_BPS);
 
     // Create WebSocket client
     let ws_client = WsClient::builder()
@@ -168,9 +170,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .accounts(vec![account_index])
         .build()?;
 
-    println!("✓ WebSocket client created");
-    println!("  Monitoring market: 0");
-    println!("  Monitoring account: {}\n", account_index);
+    tracing::info!("✓ WebSocket client created");
+    tracing::info!("  Monitoring market: 0");
+    tracing::info!("  Monitoring account: {}\n", account_index);
 
     // Order counter
     let order_count = Arc::new(AtomicU32::new(0));
@@ -194,7 +196,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             cb.check_and_update().await;
 
             let state = cb.state_name();
-            println!("📊 Market {} | Circuit: {}", market_id, state);
+            tracing::info!("📊 Market {} | Circuit: {}", market_id, state);
 
             if let (Some(best_ask), Some(best_bid)) =
                 (order_book.asks.first(), order_book.bids.first())
@@ -206,11 +208,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let spread_bps = (spread / bid_price) * 10000.0;
                     let mid_price = (ask_price + bid_price) / 2.0;
 
-                    println!(
+                    tracing::info!(
                         "  Ask: {:.2} | Bid: {:.2} | Mid: {:.2}",
                         ask_price, bid_price, mid_price
                     );
-                    println!("  Spread: {:.4} ({:.2} bps)", spread, spread_bps);
+                    tracing::info!("  Spread: {:.4} ({:.2} bps)", spread, spread_bps);
 
                     // Trading logic: Only trade if circuit is closed or half-open
                     if (cb.is_closed() || cb.is_half_open()) && spread_bps >= MIN_SPREAD_BPS {
@@ -218,11 +220,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                         // Limit total orders for demo
                         if count < 3 {
-                            println!(
+                            tracing::info!(
                                 "\n  🎯 TRADING SIGNAL: Spread {:.2} bps >= {:.2} bps",
                                 spread_bps, MIN_SPREAD_BPS
                             );
-                            println!("     Placing order #{}", count + 1);
+                            tracing::info!("     Placing order #{}", count + 1);
 
                             // Place a small market buy order
                             let result = tx_client
@@ -239,20 +241,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                             match result {
                                 Ok(order) => {
-                                    println!("     ✓ Order signed (nonce: {})", order.nonce);
+                                    tracing::info!("     ✓ Order signed (nonce: {})", order.nonce);
 
                                     // Submit to API
                                     match tx_client.send_transaction(&order).await {
                                         Ok(response) => {
                                             if response.code == 200 {
-                                                println!("     ✓ Order submitted successfully!");
+                                                tracing::info!("     ✓ Order submitted successfully!");
                                                 if let Some(hash) = response.tx_hash {
-                                                    println!("       Tx: {}", hash);
+                                                    tracing::info!("       Tx: {}", hash);
                                                 }
                                                 cb.record_success().await;
                                                 order_count.fetch_add(1, Ordering::Relaxed);
                                             } else {
-                                                println!(
+                                                tracing::info!(
                                                     "     ✗ Order rejected: {:?}",
                                                     response.message
                                                 );
@@ -260,39 +262,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                             }
                                         }
                                         Err(e) => {
-                                            println!("     ✗ Submit failed: {}", e);
+                                            tracing::info!("     ✗ Submit failed: {}", e);
                                             cb.record_failure().await;
                                         }
                                     }
                                 }
                                 Err(e) => {
-                                    println!("     ✗ Order creation failed: {}", e);
+                                    tracing::info!("     ✗ Order creation failed: {}", e);
                                     cb.record_failure().await;
                                 }
                             }
                         } else {
-                            println!("  ⚠ Demo limit reached (3 orders max)");
+                            tracing::info!("  ⚠ Demo limit reached (3 orders max)");
                         }
                     } else if !cb.is_closed() && !cb.is_half_open() {
-                        println!("  ⛔ Circuit breaker is OPEN - not trading");
+                        tracing::info!("  ⛔ Circuit breaker is OPEN - not trading");
                     }
                 }
             }
-            println!();
+            tracing::info!();
         });
     };
 
     // Account callback - Monitor our state
     let on_account_update = move |account_id: String, account_data: Value| {
-        println!("👤 Account {} Updated", account_id);
+        tracing::info!("👤 Account {} Updated", account_id);
 
         if let Some(obj) = account_data.as_object() {
             if let Some(balance) = obj.get("usdc_balance") {
-                println!("  💵 Balance: {} USDC", balance);
+                tracing::info!("  💵 Balance: {} USDC", balance);
             }
 
             if let Some(orders) = obj.get("orders").and_then(|o| o.as_array()) {
-                println!("  📋 Active Orders: {}", orders.len());
+                tracing::info!("  📋 Active Orders: {}", orders.len());
 
                 for (i, order) in orders.iter().take(3).enumerate() {
                     if let Some(order_obj) = order.as_object() {
@@ -314,54 +316,54 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .get("size")
                             .and_then(|s| s.as_str())
                             .unwrap_or("?");
-                        println!("    {}. {} {} @ {}", i + 1, side, size, price);
+                        tracing::info!("    {}. {} {} @ {}", i + 1, side, size, price);
                     }
                 }
             }
 
             if let Some(positions) = obj.get("positions").and_then(|p| p.as_array()) {
                 if !positions.is_empty() {
-                    println!("  📊 Positions: {}", positions.len());
+                    tracing::info!("  📊 Positions: {}", positions.len());
                 }
             }
 
             if let Some(pnl) = obj.get("unrealized_pnl") {
-                println!("  💹 Unrealized PnL: {}", pnl);
+                tracing::info!("  💹 Unrealized PnL: {}", pnl);
             }
         }
-        println!();
+        tracing::info!();
     };
 
-    println!("╔═══════════════════════════════════════════════════╗");
-    println!("║   Trading Bot Started with Circuit Breaker       ║");
-    println!("╚═══════════════════════════════════════════════════╝\n");
+    tracing::info!("╔═══════════════════════════════════════════════════╗");
+    tracing::info!("║   Trading Bot Started with Circuit Breaker       ║");
+    tracing::info!("╚═══════════════════════════════════════════════════╝\n");
 
-    println!("Strategy:");
-    println!("  • Monitor market 0 order book");
-    println!("  • Place orders when spread >= {} bps", MIN_SPREAD_BPS);
-    println!("  • Circuit breaker protects against failures");
-    println!("  • Demo mode: Max 3 orders\n");
+    tracing::info!("Strategy:");
+    tracing::info!("  • Monitor market 0 order book");
+    tracing::info!("  • Place orders when spread >= {} bps", MIN_SPREAD_BPS);
+    tracing::info!("  • Circuit breaker protects against failures");
+    tracing::info!("  • Demo mode: Max 3 orders\n");
 
-    println!("Safety Features:");
-    println!("  ✓ Circuit breaker pattern");
-    println!("  ✓ Order count limits");
-    println!("  ✓ Spread threshold");
-    println!("  ✓ Error handling\n");
+    tracing::info!("Safety Features:");
+    tracing::info!("  ✓ Circuit breaker pattern");
+    tracing::info!("  ✓ Order count limits");
+    tracing::info!("  ✓ Spread threshold");
+    tracing::info!("  ✓ Error handling\n");
 
-    println!("Press Ctrl+C to stop");
-    println!("{}\n", "═".repeat(50));
+    tracing::info!("Press Ctrl+C to stop");
+    tracing::info!("{}\n", "═".repeat(50));
 
     // Run the WebSocket client
     match ws_client.run(on_order_book_update, on_account_update).await {
-        Ok(_) => println!("\n✓ WebSocket connection closed normally"),
-        Err(e) => eprintln!("\n✗ WebSocket error: {}", e),
+        Ok(_) => tracing::info!("\n✓ WebSocket connection closed normally"),
+        Err(e) => tracing::warn!("\n✗ WebSocket error: {}", e),
     }
 
-    println!("\n╔═══════════════════════════════════════════════════╗");
-    println!("║   Trading Bot Stopped                             ║");
-    println!("╚═══════════════════════════════════════════════════╝");
-    println!("\nOrders placed: {}", order_count.load(Ordering::Relaxed));
-    println!("Circuit state: {}", circuit_breaker.state_name());
+    tracing::info!("\n╔═══════════════════════════════════════════════════╗");
+    tracing::info!("║   Trading Bot Stopped                             ║");
+    tracing::info!("╚═══════════════════════════════════════════════════╝");
+    tracing::info!("\nOrders placed: {}", order_count.load(Ordering::Relaxed));
+    tracing::info!("Circuit state: {}", circuit_breaker.state_name());
 
     Ok(())
 }

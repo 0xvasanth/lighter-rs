@@ -6,10 +6,12 @@
 
 use lighter_rs::client::TxClient;
 use lighter_rs::types::{TransactOpts, TransferTxReq, TxInfo};
+use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("=== Lighter RS: Transfer Funds Example ===\n");
+    tracing_subscriber::fmt::init();
+    tracing::info!("=== Lighter RS: Transfer Funds Example ===\n");
 
     // Initialize the transaction client
     let tx_client = TxClient::new(
@@ -20,8 +22,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         1,     // Chain ID
     )?;
 
-    println!("✓ Transaction client initialized");
-    println!("  From Account: {}", tx_client.account_index());
+    tracing::info!("✓ Transaction client initialized");
+    tracing::info!("  From Account: {}", tx_client.account_index());
 
     // Create a transfer request
     let transfer_req = TransferTxReq {
@@ -31,13 +33,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         memo: [0u8; 32],
     };
 
-    println!("\nTransfer Details:");
-    println!("  To Account: {}", transfer_req.to_account_index);
-    println!(
+    tracing::info!("\nTransfer Details:");
+    tracing::info!("  To Account: {}", transfer_req.to_account_index);
+    tracing::info!(
         "  Amount: {} USDC",
         transfer_req.usdc_amount as f64 / 1_000_000.0
     );
-    println!("  Fee: {} USDC", transfer_req.fee as f64 / 1_000_000.0);
+    tracing::info!("  Fee: {} USDC", transfer_req.fee as f64 / 1_000_000.0);
 
     // Create transaction options
     let opts = TransactOpts {
@@ -51,17 +53,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Sign the transaction
     let tx = tx_client.transfer(&transfer_req, Some(opts)).await?;
 
-    println!("\n✓ Transfer transaction signed successfully");
-    println!("  Transaction Type: {}", tx.get_tx_type());
-    println!("  From: {}", tx.from_account_index);
-    println!("  To: {}", tx.to_account_index);
-    println!("  Amount: {}", tx.usdc_amount);
-    println!("  Nonce: {}", tx.nonce);
+    tracing::info!("\n✓ Transfer transaction signed successfully");
+    tracing::info!("  Transaction Type: {}", tx.get_tx_type());
+    tracing::info!("  From: {}", tx.from_account_index);
+    tracing::info!("  To: {}", tx.to_account_index);
+    tracing::info!("  Amount: {}", tx.usdc_amount);
+    tracing::info!("  Nonce: {}", tx.nonce);
     if let Some(hash) = tx.get_tx_hash() {
-        println!("  Transaction Hash: {}", hash);
+        tracing::info!("  Transaction Hash: {}", hash);
     }
 
-    println!("\n✓ Example completed successfully!");
+    tracing::info!("\n✓ Example completed successfully!");
 
     Ok(())
 }

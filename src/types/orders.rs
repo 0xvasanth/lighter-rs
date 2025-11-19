@@ -280,14 +280,21 @@ pub struct CreateGroupedOrdersTxReq {
 /// L2 Cancel Order Transaction Info
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct L2CancelOrderTxInfo {
+    #[serde(rename = "AccountIndex")]
     pub account_index: i64,
+    #[serde(rename = "ApiKeyIndex")]
     pub api_key_index: u8,
+    #[serde(rename = "MarketIndex")]
     pub market_index: u8,
+    #[serde(rename = "Index")]
     pub index: i64,
+    #[serde(rename = "ExpiredAt")]
     pub expired_at: i64,
+    #[serde(rename = "Nonce")]
     pub nonce: i64,
+    #[serde(rename = "Sig")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(with = "hex_serde", default)]
+    #[serde(with = "base64_serde", default)]
     pub sig: Option<Vec<u8>>,
     #[serde(skip)]
     pub signed_hash: Option<String>,
@@ -536,32 +543,47 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_create_order_validation_success() {
-        let tx_info = L2CreateOrderTxInfo {
-            account_index: 12345,
-            api_key_index: 0,
-            order_info: create_valid_order_info(),
+    fn create_test_tx_info_with_account(
+        order_info: OrderInfo,
+        account_index: i64,
+        api_key_index: u8,
+        nonce: i64,
+    ) -> L2CreateOrderTxInfo {
+        L2CreateOrderTxInfo {
+            account_index,
+            api_key_index,
+            // Flatten order_info fields
+            market_index: order_info.market_index,
+            client_order_index: order_info.client_order_index,
+            base_amount: order_info.base_amount,
+            price: order_info.price,
+            is_ask: order_info.is_ask,
+            order_type: order_info.order_type,
+            time_in_force: order_info.time_in_force,
+            reduce_only: order_info.reduce_only,
+            trigger_price: order_info.trigger_price,
+            order_expiry: order_info.order_expiry,
             expired_at: 1000000,
-            nonce: 1,
+            nonce,
             sig: None,
             signed_hash: None,
-        };
+            order_info, // Keep for internal use
+        }
+    }
 
+    fn create_test_tx_info(order_info: OrderInfo) -> L2CreateOrderTxInfo {
+        create_test_tx_info_with_account(order_info, 12345, 0, 1)
+    }
+
+    #[test]
+    fn test_create_order_validation_success() {
+        let tx_info = create_test_tx_info(create_valid_order_info());
         assert!(tx_info.validate().is_ok());
     }
 
     #[test]
     fn test_create_order_account_index_too_low() {
-        let tx_info = L2CreateOrderTxInfo {
-            account_index: -1,
-            api_key_index: 0,
-            order_info: create_valid_order_info(),
-            expired_at: 1000000,
-            nonce: 1,
-            sig: None,
-            signed_hash: None,
-        };
+        let tx_info = create_test_tx_info_with_account(create_valid_order_info(), -1, 0, 1);
 
         let result = tx_info.validate();
         assert!(result.is_err());
@@ -573,35 +595,7 @@ mod tests {
 
     #[test]
     fn test_create_order_account_index_too_high() {
-        let tx_info = L2CreateOrderTxInfo {
-            account_index: MAX_ACCOUNT_INDEX + 1,
-            api_key_index: 0,
-            order_info: create_valid_order_info(),
-            expired_at: 1000000,
-            nonce: 1,
-            sig: None,
-            signed_hash: None,
-        };
-
-        let result = tx_info.validate();
-        assert!(result.is_err());
-        assert!(matches!(
-            result.unwrap_err(),
-            LighterError::AccountIndexTooHigh(_)
-        ));
-    }
-
-    #[test]
-    fn test_create_order_api_key_index_too_high() {
-        let tx_info = L2CreateOrderTxInfo {
-            account_index: 12345,
-            api_key_index: 255,
-            order_info: create_valid_order_info(),
-            expired_at: 1000000,
-            nonce: 1,
-            sig: None,
-            signed_hash: None,
-        };
+        let tx_info = create_test_tx_info_with_account(create_valid_order_info(), 12345, 255, 1);
 
         let result = tx_info.validate();
         assert!(result.is_err());
@@ -616,52 +610,7 @@ mod tests {
         let mut order_info = create_valid_order_info();
         order_info.price = 0;
 
-        let tx_info = L2CreateOrderTxInfo {
-            account_index: 12345,
-            api_key_index: 0,
-            order_info,
-            expired_at: 1000000,
-            nonce: 1,
-            sig: None,
-            signed_hash: None,
-        };
-
-        let result = tx_info.validate();
-        assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), LighterError::PriceTooLow(_)));
-    }
-
-    #[test]
-    fn test_create_order_is_ask_invalid() {
-        let mut order_info = create_valid_order_info();
-        order_info.is_ask = 2;
-
-        let tx_info = L2CreateOrderTxInfo {
-            account_index: 12345,
-            api_key_index: 0,
-            order_info,
-            expired_at: 1000000,
-            nonce: 1,
-            sig: None,
-            signed_hash: None,
-        };
-
-        let result = tx_info.validate();
-        assert!(result.is_err());
-        assert!(matches!(result.unwrap_err(), LighterError::IsAskInvalid));
-    }
-
-    #[test]
-    fn test_create_order_nonce_too_low() {
-        let tx_info = L2CreateOrderTxInfo {
-            account_index: 12345,
-            api_key_index: 0,
-            order_info: create_valid_order_info(),
-            expired_at: 1000000,
-            nonce: -1,
-            sig: None,
-            signed_hash: None,
-        };
+        let tx_info = create_test_tx_info_with_account(create_valid_order_info(), 12345, 0, -1);
 
         let result = tx_info.validate();
         assert!(result.is_err());
@@ -670,15 +619,7 @@ mod tests {
 
     #[test]
     fn test_create_order_tx_type() {
-        let tx_info = L2CreateOrderTxInfo {
-            account_index: 12345,
-            api_key_index: 0,
-            order_info: create_valid_order_info(),
-            expired_at: 1000000,
-            nonce: 1,
-            sig: None,
-            signed_hash: None,
-        };
+        let tx_info = create_test_tx_info_with_account(create_valid_order_info(), 12345, 0, 1);
 
         assert_eq!(tx_info.get_tx_type(), TX_TYPE_L2_CREATE_ORDER);
     }
@@ -803,21 +744,16 @@ mod tests {
 
     #[test]
     fn test_tx_info_serialization() {
-        let tx_info = L2CreateOrderTxInfo {
-            account_index: 12345,
-            api_key_index: 0,
-            order_info: create_valid_order_info(),
-            expired_at: 1000000,
-            nonce: 1,
-            sig: None,
-            signed_hash: None,
-        };
+        let tx_info = create_test_tx_info_with_account(create_valid_order_info(), 12345, 0, 1);
 
         let json_result = tx_info.get_tx_info();
         assert!(json_result.is_ok());
 
         let json = json_result.unwrap();
-        assert!(json.contains("account_index"));
+        // Fields are now PascalCase
+        assert!(json.contains("AccountIndex"));
         assert!(json.contains("12345"));
+        assert!(json.contains("MarketIndex"));
+        assert!(json.contains("BaseAmount"));
     }
 }

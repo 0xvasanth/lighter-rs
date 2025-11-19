@@ -12,12 +12,14 @@ use lighter_rs::client::TxClient;
 use lighter_rs::types::CancelOrderTxReq;
 use std::env;
 use std::time::Duration;
+use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt::init();
     dotenv().ok();
 
-    println!("=== Safe Trade Test: Open & Close Limit Order ===\n");
+    tracing::info!("=== Safe Trade Test: Open & Close Limit Order ===\n");
 
     // Load configuration
     let private_key = env::var("LIGHTER_API_KEY")?;
@@ -26,20 +28,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let chain_id: u32 = env::var("LIGHTER_CHAIN_ID").unwrap_or_else(|_| "304".to_string()).parse()?;
     let api_url = env::var("LIGHTER_API_URL")?;
 
-    println!("Configuration:");
-    println!("  API URL: {}", api_url);
-    println!("  Account Index: {}", account_index);
-    println!("  API Key Index: {}", api_key_index);
-    println!("  Chain ID: {}", chain_id);
-    println!();
+    tracing::info!("Configuration:");
+    tracing::info!("  API URL: {}", api_url);
+    tracing::info!("  Account Index: {}", account_index);
+    tracing::info!("  API Key Index: {}", api_key_index);
+    tracing::info!("  Chain ID: {}", chain_id);
+    tracing::info!();
 
     // Initialize client
-    println!("Step 1: Initializing client...");
+    tracing::info!("Step 1: Initializing client...");
     let tx_client = TxClient::new(&api_url, &private_key, account_index, api_key_index, chain_id)?;
-    println!("  ✅ Client initialized successfully\n");
+    tracing::info!("  ✅ Client initialized successfully\n");
 
     // Step 2: Create a safe limit order
-    println!("Step 2: Creating a SAFE limit order...");
+    tracing::info!("Step 2: Creating a SAFE limit order...");
 
     let market_index = 0u8; // ETH market
     let client_order_index = chrono::Utc::now().timestamp_millis();
@@ -50,14 +52,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let safe_price = 1_000_000u32; // $1.00 with 6 decimals (WAY below market)
     let base_amount = 10_000_000i64; // $10 worth (minimum for most markets)
 
-    println!("  Market: ETH (index: {})", market_index);
-    println!("  Order Type: LIMIT BUY");
-    println!("  Price: ${} (far below market - will NOT fill)", safe_price as f64 / 1_000_000.0);
-    println!("  Amount: ${}", base_amount as f64 / 1_000_000.0);
-    println!("  Client Order Index: {}", client_order_index);
-    println!();
+    tracing::info!("  Market: ETH (index: {})", market_index);
+    tracing::info!("  Order Type: LIMIT BUY");
+    tracing::info!("  Price: ${} (far below market - will NOT fill)", safe_price as f64 / 1_000_000.0);
+    tracing::info!("  Amount: ${}", base_amount as f64 / 1_000_000.0);
+    tracing::info!("  Client Order Index: {}", client_order_index);
+    tracing::info!();
 
-    println!("  Creating order...");
+    tracing::info!("  Creating order...");
     let order = match tx_client.create_limit_order(
         market_index,
         client_order_index,
@@ -68,11 +70,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         None,
     ).await {
         Ok(order) => {
-            println!("  ✅ Order created and signed locally");
+            tracing::info!("  ✅ Order created and signed locally");
             order
         }
         Err(e) => {
-            println!("  ❌ Failed to create order: {}", e);
+            tracing::info!("  ❌ Failed to create order: {}", e);
             return Err(e.into());
         }
     };
@@ -81,90 +83,90 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(sig) = &order.sig {
         let has_nonzero = sig.iter().any(|&b| b != 0);
         if has_nonzero {
-            println!("  ✅ Signature generated (cryptographically valid)");
+            tracing::info!("  ✅ Signature generated (cryptographically valid)");
         } else {
-            println!("  ❌ WARNING: Signature is all zeros!");
+            tracing::info!("  ❌ WARNING: Signature is all zeros!");
             return Err("Invalid signature".into());
         }
     }
-    println!();
+    tracing::info!();
 
     // Step 3: Submit the order
-    println!("Step 3: Submitting order to Lighter...");
+    tracing::info!("Step 3: Submitting order to Lighter...");
     let submit_result = tx_client.send_transaction(&order).await;
 
     let order_placed = match submit_result {
         Ok(response) => {
             if response.code == 200 {
-                println!("  ✅ ORDER PLACED SUCCESSFULLY!");
+                tracing::info!("  ✅ ORDER PLACED SUCCESSFULLY!");
                 if let Some(hash) = &response.tx_hash {
-                    println!("  Transaction Hash: {}", hash);
+                    tracing::info!("  Transaction Hash: {}", hash);
                 }
-                println!();
+                tracing::info!();
                 true
             } else {
-                println!("  ⚠️  Order submission returned non-200 code: {}", response.code);
-                println!("  Message: {:?}", response.message);
-                println!();
+                tracing::info!("  ⚠️  Order submission returned non-200 code: {}", response.code);
+                tracing::info!("  Message: {:?}", response.message);
+                tracing::info!();
 
                 // Common errors with solutions
                 match response.code {
                     21701 => {
-                        println!("  💡 Error 21701 (invalid base amount):");
-                        println!("     - Your API key might not be registered");
-                        println!("     - Check minimum order size for this market");
-                        println!("     - Verify account has sufficient balance");
+                        tracing::info!("  💡 Error 21701 (invalid base amount):");
+                        tracing::info!("     - Your API key might not be registered");
+                        tracing::info!("     - Check minimum order size for this market");
+                        tracing::info!("     - Verify account has sufficient balance");
                     }
                     21109 => {
-                        println!("  💡 Error 21109 (api key not found):");
-                        println!("     - API key is not registered at https://app.lighter.xyz");
-                        println!("     - Verify account_index and api_key_index are correct");
-                        println!("     - Generate a new API key if needed");
+                        tracing::info!("  💡 Error 21109 (api key not found):");
+                        tracing::info!("     - API key is not registered at https://app.lighter.xyz");
+                        tracing::info!("     - Verify account_index and api_key_index are correct");
+                        tracing::info!("     - Generate a new API key if needed");
                     }
                     _ => {
-                        println!("  💡 Check TROUBLESHOOTING.md for error code {}", response.code);
+                        tracing::info!("  💡 Check TROUBLESHOOTING.md for error code {}", response.code);
                     }
                 }
-                println!();
+                tracing::info!();
                 false
             }
         }
         Err(e) => {
-            println!("  ❌ Failed to submit order: {}", e);
-            println!();
-            println!("  💡 Common causes:");
-            println!("     - Network connection issues");
-            println!("     - Invalid API endpoint");
-            println!("     - API key not registered");
-            println!();
+            tracing::info!("  ❌ Failed to submit order: {}", e);
+            tracing::info!();
+            tracing::info!("  💡 Common causes:");
+            tracing::info!("     - Network connection issues");
+            tracing::info!("     - Invalid API endpoint");
+            tracing::info!("     - API key not registered");
+            tracing::info!();
             false
         }
     };
 
     if !order_placed {
-        println!("=== Test Result: Order NOT Placed ===");
-        println!();
-        println!("The order was not placed on Lighter. This means:");
-        println!("  1. ✅ SDK works correctly (order created, signed)");
-        println!("  2. ❌ API credentials are invalid or not registered");
-        println!();
-        println!("📝 Next Steps:");
-        println!("  1. Go to https://app.lighter.xyz");
-        println!("  2. Create/verify your API key");
-        println!("  3. Update .env with correct credentials");
-        println!("  4. Ensure account has sufficient balance");
-        println!();
-        println!("💡 See TROUBLESHOOTING.md for detailed help");
+        tracing::info!("=== Test Result: Order NOT Placed ===");
+        tracing::info!();
+        tracing::info!("The order was not placed on Lighter. This means:");
+        tracing::info!("  1. ✅ SDK works correctly (order created, signed)");
+        tracing::info!("  2. ❌ API credentials are invalid or not registered");
+        tracing::info!();
+        tracing::info!("📝 Next Steps:");
+        tracing::info!("  1. Go to https://app.lighter.xyz");
+        tracing::info!("  2. Create/verify your API key");
+        tracing::info!("  3. Update .env with correct credentials");
+        tracing::info!("  4. Ensure account has sufficient balance");
+        tracing::info!();
+        tracing::info!("💡 See TROUBLESHOOTING.md for detailed help");
         return Ok(());
     }
 
     // Step 4: Wait a moment to let the order settle
-    println!("Step 4: Waiting for order to settle on blockchain...");
+    tracing::info!("Step 4: Waiting for order to settle on blockchain...");
     tokio::time::sleep(Duration::from_secs(3)).await;
-    println!("  ✅ Wait complete\n");
+    tracing::info!("  ✅ Wait complete\n");
 
     // Step 5: Cancel the order (to avoid any risk)
-    println!("Step 5: Cancelling order to complete the test...");
+    tracing::info!("Step 5: Cancelling order to complete the test...");
 
     let cancel_req = CancelOrderTxReq {
         market_index,
@@ -173,76 +175,76 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     match tx_client.cancel_order(&cancel_req, None).await {
         Ok(cancel_tx) => {
-            println!("  ✅ Cancel transaction created and signed");
+            tracing::info!("  ✅ Cancel transaction created and signed");
 
             // Submit cancellation
             match tx_client.send_transaction(&cancel_tx).await {
                 Ok(response) => {
                     if response.code == 200 {
-                        println!("  ✅ ORDER CANCELLED SUCCESSFULLY!");
+                        tracing::info!("  ✅ ORDER CANCELLED SUCCESSFULLY!");
                         if let Some(hash) = &response.tx_hash {
-                            println!("  Cancellation Tx Hash: {}", hash);
+                            tracing::info!("  Cancellation Tx Hash: {}", hash);
                         }
-                        println!();
+                        tracing::info!();
                     } else {
-                        println!("  ⚠️  Cancellation returned code: {}", response.code);
-                        println!("  Message: {:?}", response.message);
-                        println!();
+                        tracing::info!("  ⚠️  Cancellation returned code: {}", response.code);
+                        tracing::info!("  Message: {:?}", response.message);
+                        tracing::info!();
 
                         if response.code == 21109 {
-                            println!("  Note: Order might not exist or already filled/cancelled");
+                            tracing::info!("  Note: Order might not exist or already filled/cancelled");
                         }
                     }
                 }
                 Err(e) => {
-                    println!("  ⚠️  Failed to cancel: {}", e);
-                    println!("  Note: Order might not exist on the exchange");
-                    println!();
+                    tracing::info!("  ⚠️  Failed to cancel: {}", e);
+                    tracing::info!("  Note: Order might not exist on the exchange");
+                    tracing::info!();
                 }
             }
         }
         Err(e) => {
-            println!("  ❌ Failed to create cancel transaction: {}", e);
-            println!();
+            tracing::info!("  ❌ Failed to create cancel transaction: {}", e);
+            tracing::info!();
         }
     }
 
     // Final Summary
-    println!("=== Test Complete ===\n");
-    println!("Summary:");
-    println!("  ✅ Client initialization: SUCCESS");
-    println!("  ✅ Order creation: SUCCESS");
-    println!("  ✅ Signature generation: SUCCESS (non-zero)");
-    println!("  {} Order placement: {}",
+    tracing::info!("=== Test Complete ===\n");
+    tracing::info!("Summary:");
+    tracing::info!("  ✅ Client initialization: SUCCESS");
+    tracing::info!("  ✅ Order creation: SUCCESS");
+    tracing::info!("  ✅ Signature generation: SUCCESS (non-zero)");
+    tracing::info!("  {} Order placement: {}",
         if order_placed { "✅" } else { "⚠️ " },
         if order_placed { "SUCCESS" } else { "FAILED (check credentials)" }
     );
-    println!();
+    tracing::info!();
 
     if order_placed {
-        println!("🎉 CONGRATULATIONS!");
-        println!();
-        println!("Your Lighter API is working correctly!");
-        println!("  - Orders can be placed");
-        println!("  - Orders can be cancelled");
-        println!("  - Signatures are valid");
-        println!("  - API key is registered");
-        println!();
-        println!("You're ready to trade on Lighter! 🚀");
+        tracing::info!("🎉 CONGRATULATIONS!");
+        tracing::info!();
+        tracing::info!("Your Lighter API is working correctly!");
+        tracing::info!("  - Orders can be placed");
+        tracing::info!("  - Orders can be cancelled");
+        tracing::info!("  - Signatures are valid");
+        tracing::info!("  - API key is registered");
+        tracing::info!();
+        tracing::info!("You're ready to trade on Lighter! 🚀");
     } else {
-        println!("⚠️  API Credentials Issue");
-        println!();
-        println!("The SDK is working perfectly, but your API credentials");
-        println!("are not registered or invalid. Follow the steps above to fix.");
-        println!();
-        println!("💡 The good news: All the hard work is done!");
-        println!("   - Poseidon signing: ✅ Implemented");
-        println!("   - Form data encoding: ✅ Fixed");
-        println!("   - Order creation: ✅ Working");
-        println!();
-        println!("   You just need valid credentials to trade!");
+        tracing::info!("⚠️  API Credentials Issue");
+        tracing::info!();
+        tracing::info!("The SDK is working perfectly, but your API credentials");
+        tracing::info!("are not registered or invalid. Follow the steps above to fix.");
+        tracing::info!();
+        tracing::info!("💡 The good news: All the hard work is done!");
+        tracing::info!("   - Poseidon signing: ✅ Implemented");
+        tracing::info!("   - Form data encoding: ✅ Fixed");
+        tracing::info!("   - Order creation: ✅ Working");
+        tracing::info!();
+        tracing::info!("   You just need valid credentials to trade!");
     }
-    println!();
+    tracing::info!();
 
     Ok(())
 }

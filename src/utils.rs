@@ -33,8 +33,7 @@ pub fn validate_range<T: PartialOrd + std::fmt::Display>(
 ) -> Result<()> {
     if value < min || value > max {
         return Err(LighterError::Other(format!(
-            "{} must be between {} and {}, got {}",
-            field_name, min, max, value
+            "{field_name} must be between {min} and {max}, got {value}"
         )));
     }
     Ok(())

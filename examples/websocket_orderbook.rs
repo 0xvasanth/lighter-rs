@@ -8,12 +8,14 @@
 //! Run with: cargo run --example websocket_orderbook
 
 use lighter_rs::ws_client::{OrderBook, WsClient};
+use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("╔═══════════════════════════════════════════════════╗");
-    println!("║   Lighter RS - WebSocket Order Book Example      ║");
-    println!("╚═══════════════════════════════════════════════════╝\n");
+    tracing_subscriber::fmt::init();
+    tracing::info!("╔═══════════════════════════════════════════════════╗");
+    tracing::info!("║   Lighter RS - WebSocket Order Book Example      ║");
+    tracing::info!("╚═══════════════════════════════════════════════════╝\n");
 
     // Create WebSocket client
     let client = WsClient::builder()
@@ -21,17 +23,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .order_books(vec![0, 1]) // Subscribe to markets 0 and 1
         .build()?;
 
-    println!("Connecting to WebSocket...");
-    println!("Subscriptions: markets 0, 1\n");
+    tracing::info!("Connecting to WebSocket...");
+    tracing::info!("Subscriptions: markets 0, 1\n");
 
     // Define callback for order book updates
     let on_order_book_update = |market_id: String, order_book: OrderBook| {
-        println!("═══ Order Book Update: Market {} ═══", market_id);
+        tracing::info!("═══ Order Book Update: Market {} ═══", market_id);
 
         // Display top 5 asks
-        println!("\n  📈 Top 5 Asks (Sell Orders):");
+        tracing::info!("\n  📈 Top 5 Asks (Sell Orders):");
         for (i, ask) in order_book.asks.iter().take(5).enumerate() {
-            println!(
+            tracing::info!(
                 "    {}. Price: {:>12} | Size: {:>12}",
                 i + 1,
                 ask.price,
@@ -40,9 +42,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         // Display top 5 bids
-        println!("\n  📉 Top 5 Bids (Buy Orders):");
+        tracing::info!("\n  📉 Top 5 Bids (Buy Orders):");
         for (i, bid) in order_book.bids.iter().take(5).enumerate() {
-            println!(
+            tracing::info!(
                 "    {}. Price: {:>12} | Size: {:>12}",
                 i + 1,
                 bid.price,
@@ -58,19 +60,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             {
                 let spread = ask_price - bid_price;
                 let spread_bps = (spread / bid_price) * 10000.0;
-                println!("\n  💰 Spread: {:.2} ({:.2} bps)", spread, spread_bps);
+                tracing::info!("\n  💰 Spread: {:.2} ({:.2} bps)", spread, spread_bps);
             }
         }
 
-        println!("\n{}\n", "─".repeat(50));
+        tracing::info!("\n{}\n", "─".repeat(50));
     };
 
     // Placeholder for account updates (not used in this example)
     let on_account_update = |_account_id: String, _account_data: serde_json::Value| {};
 
-    println!("Starting WebSocket stream...");
-    println!("Press Ctrl+C to stop\n");
-    println!("{}\n", "═".repeat(50));
+    tracing::info!("Starting WebSocket stream...");
+    tracing::info!("Press Ctrl+C to stop\n");
+    tracing::info!("{}\n", "═".repeat(50));
 
     // Run the WebSocket client
     client.run(on_order_book_update, on_account_update).await?;

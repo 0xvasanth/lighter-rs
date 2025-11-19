@@ -1,5 +1,3 @@
-/// Close the 0.01 ETH position with reduce_only
-
 use dotenv::dotenv;
 use lighter_rs::client::TxClient;
 use std::env;
@@ -9,7 +7,6 @@ use tracing;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
     dotenv().ok();
-
     let tx_client = TxClient::new(
         &env::var("LIGHTER_API_URL")?,
         &env::var("LIGHTER_API_KEY")?,
@@ -18,24 +15,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         304,
     )?;
 
-    tracing::info!("Closing 0.01 ETH position with reduce_only=true...\n");
-
-    let close = tx_client.create_market_order(
+    tracing::info!("Testing limit order placement...\n");
+    
+    let limit = tx_client.create_limit_order(
         0,
         chrono::Utc::now().timestamp_millis(),
-        10_000,        // 0.01 ETH exactly
-        3_000_000_000,
-        1,             // SELL
-        true,          // reduce_only!
+        50,            // Tiny: 0.00005 ETH
+        2_998_000_000, // $2998
+        0,
+        false,
         None,
     ).await?;
 
-    match tx_client.send_transaction(&close).await {
-        Ok(r) if r.code == 200 => {
-            tracing::info!("✅ Position closed!");
-            tracing::info!("Tx: {:?}", r.tx_hash);
+    match tx_client.send_transaction(&limit).await {
+        Ok(r) => {
+            tracing::info!("Response code: {}", r.code);
+            tracing::info!("Message: {:?}", r.message);
+            if r.code == 200 {
+                tracing::info!("\n✅ SUCCESS!");
+            }
         }
-        Ok(r) => tracing::info!("Error {}: {:?}", r.code, r.message),
         Err(e) => tracing::info!("Error: {}", e),
     }
 

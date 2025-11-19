@@ -18,14 +18,16 @@ use serde_json::Value;
 use std::env;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
+use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt::init();
     dotenv().ok();
 
-    println!("╔═══════════════════════════════════════════════════╗");
-    println!("║   Lighter RS - WebSocket Trades Monitor          ║");
-    println!("╚═══════════════════════════════════════════════════╝\n");
+    tracing::info!("╔═══════════════════════════════════════════════════╗");
+    tracing::info!("║   Lighter RS - WebSocket Trades Monitor          ║");
+    tracing::info!("╚═══════════════════════════════════════════════════╝\n");
 
     // Load configuration
     let api_key = env::var("LIGHTER_API_KEY").expect("LIGHTER_API_KEY not found in .env");
@@ -46,11 +48,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Use dedicated WebSocket host from environment
     let ws_host = env::var("LIGHTER_WS_HOST").unwrap_or_else(|_| "ws.lighter.xyz".to_string());
 
-    println!("Configuration:");
-    println!("  API: {}", api_url);
-    println!("  WebSocket: wss://{}/stream", ws_host);
-    println!("  Account: {}", account_index);
-    println!("  Chain ID: {}\n", chain_id);
+    tracing::info!("Configuration:");
+    tracing::info!("  API: {}", api_url);
+    tracing::info!("  WebSocket: wss://{}/stream", ws_host);
+    tracing::info!("  Account: {}", account_index);
+    tracing::info!("  Chain ID: {}\n", chain_id);
 
     // Create trading client
     let tx_client = Arc::new(TxClient::new(
@@ -61,13 +63,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         chain_id,
     )?);
 
-    println!("✓ Trading client initialized\n");
+    tracing::info!("✓ Trading client initialized\n");
 
     // Create WebSocket client
-    println!("Creating WebSocket connection...");
-    println!("  Host: {}", ws_host);
-    println!("  Path: /stream");
-    println!("  Subscriptions: market 0, account {}\n", account_index);
+    tracing::info!("Creating WebSocket connection...");
+    tracing::info!("  Host: {}", ws_host);
+    tracing::info!("  Path: /stream");
+    tracing::info!("  Subscriptions: market 0, account {}\n", account_index);
 
     let ws_client = WsClient::builder()
         .host(&ws_host)
@@ -76,7 +78,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .accounts(vec![account_index])
         .build()?;
 
-    println!("✓ WebSocket client created\n");
+    tracing::info!("✓ WebSocket client created\n");
 
     // Price tracking
     let last_mid_price = Arc::new(tokio::sync::RwLock::new(0.0f64));
@@ -93,7 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let on_order_book_update = move |market_id: String, order_book: OrderBook| {
         let count = update_count_clone.fetch_add(1, Ordering::Relaxed) + 1;
 
-        println!("═══ Update #{} - Market {} ═══", count, market_id);
+        tracing::info!("═══ Update #{} - Market {} ═══", count, market_id);
 
         if let (Some(best_ask), Some(best_bid)) = (order_book.asks.first(), order_book.bids.first())
         {
@@ -104,11 +106,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let spread = ask_price - bid_price;
                 let spread_bps = (spread / bid_price) * 10000.0;
 
-                println!("📊 Market Data:");
-                println!("  Best Ask: ${:.4} (Size: {})", ask_price, best_ask.size);
-                println!("  Best Bid: ${:.4} (Size: {})", bid_price, best_bid.size);
-                println!("  Mid Price: ${:.4}", mid_price);
-                println!("  Spread: ${:.4} ({:.2} bps)", spread, spread_bps);
+                tracing::info!("📊 Market Data:");
+                tracing::info!("  Best Ask: ${:.4} (Size: {})", ask_price, best_ask.size);
+                tracing::info!("  Best Bid: ${:.4} (Size: {})", bid_price, best_bid.size);
+                tracing::info!("  Mid Price: ${:.4}", mid_price);
+                tracing::info!("  Spread: ${:.4} ({:.2} bps)", spread, spread_bps);
 
                 // Calculate order book depth
                 let ask_depth: f64 = order_book
@@ -125,7 +127,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .filter_map(|level| level.size.parse::<f64>().ok())
                     .sum();
 
-                println!(
+                tracing::info!(
                     "  Depth (top 5): Asks {:.2} | Bids {:.2}",
                     ask_depth, bid_depth
                 );
@@ -142,21 +144,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         let price_change = mid_price - *last_mid;
                         let price_change_pct = (price_change / *last_mid) * 100.0;
 
-                        println!(
+                        tracing::info!(
                             "  📈 Price Change: ${:.4} ({:+.2}%)",
                             price_change, price_change_pct
                         );
 
                         // Simple trading logic: Trade on significant price moves
                         if price_change_pct.abs() > 0.1 && trade_count.load(Ordering::Relaxed) < 2 {
-                            println!(
+                            tracing::info!(
                                 "\n  🎯 TRADING SIGNAL: Price moved {:+.2}%",
                                 price_change_pct
                             );
 
                             let is_ask = if price_change_pct > 0.0 { 1 } else { 0 }; // Sell if price up, buy if down
 
-                            println!(
+                            tracing::info!(
                                 "     Action: {} at ${:.4}",
                                 if is_ask == 1 { "SELL" } else { "BUY" },
                                 mid_price
@@ -176,24 +178,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 .await
                             {
                                 Ok(order) => {
-                                    println!("     ✓ Order signed (nonce: {})", order.nonce);
+                                    tracing::info!("     ✓ Order signed (nonce: {})", order.nonce);
 
                                     match tx_client.send_transaction(&order).await {
                                         Ok(response) => {
                                             if response.code == 200 {
-                                                println!("     ✓ Order submitted!");
+                                                tracing::info!("     ✓ Order submitted!");
                                                 if let Some(hash) = response.tx_hash {
-                                                    println!("       Tx: {}...", &hash[..16]);
+                                                    tracing::info!("       Tx: {}...", &hash[..16]);
                                                 }
                                                 trade_count.fetch_add(1, Ordering::Relaxed);
                                             } else {
-                                                println!("     ✗ Rejected: {:?}", response.message);
+                                                tracing::info!("     ✗ Rejected: {:?}", response.message);
                                             }
                                         }
-                                        Err(e) => println!("     ✗ Submit error: {}", e),
+                                        Err(e) => tracing::info!("     ✗ Submit error: {}", e),
                                     }
                                 }
-                                Err(e) => println!("     ✗ Order error: {}", e),
+                                Err(e) => tracing::info!("     ✗ Order error: {}", e),
                             }
                         }
                     }
@@ -201,29 +203,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     *last_mid = mid_price;
                 });
 
-                println!();
+                tracing::info!();
             }
         }
     };
 
     // Account callback
     let on_account_update = move |account_id: String, account_data: Value| {
-        println!("👤 Account {} Update", account_id);
+        tracing::info!("👤 Account {} Update", account_id);
 
         if let Some(obj) = account_data.as_object() {
             if let Some(balance) = obj.get("usdc_balance").and_then(|b| b.as_str()) {
                 if let Ok(balance_num) = balance.parse::<f64>() {
-                    println!("  💵 Balance: ${:.2} USDC", balance_num / 1_000_000.0);
+                    tracing::info!("  💵 Balance: ${:.2} USDC", balance_num / 1_000_000.0);
                 }
             }
 
             if let Some(orders) = obj.get("orders").and_then(|o| o.as_array()) {
-                println!("  📋 Active Orders: {}", orders.len());
+                tracing::info!("  📋 Active Orders: {}", orders.len());
             }
 
             if let Some(positions) = obj.get("positions").and_then(|p| p.as_array()) {
                 if !positions.is_empty() {
-                    println!("  📊 Positions: {}", positions.len());
+                    tracing::info!("  📊 Positions: {}", positions.len());
                     for (i, pos) in positions.iter().take(3).enumerate() {
                         if let Some(pos_obj) = pos.as_object() {
                             let size = pos_obj.get("size").and_then(|s| s.as_str()).unwrap_or("0");
@@ -231,7 +233,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 .get("market_index")
                                 .and_then(|m| m.as_i64())
                                 .unwrap_or(0);
-                            println!("    {}. Market {}: Size {}", i + 1, market, size);
+                            tracing::info!("    {}. Market {}: Size {}", i + 1, market, size);
                         }
                     }
                 }
@@ -241,50 +243,50 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if let Ok(pnl_num) = pnl.parse::<f64>() {
                     let pnl_usdc = pnl_num / 1_000_000.0;
                     let emoji = if pnl_usdc >= 0.0 { "💹" } else { "📉" };
-                    println!("  {} Unrealized PnL: ${:.2}", emoji, pnl_usdc);
+                    tracing::info!("  {} Unrealized PnL: ${:.2}", emoji, pnl_usdc);
                 }
             }
         }
-        println!();
+        tracing::info!();
     };
 
-    println!("╔═══════════════════════════════════════════════════╗");
-    println!("║   WebSocket Market Monitor Started               ║");
-    println!("╚═══════════════════════════════════════════════════╝\n");
+    tracing::info!("╔═══════════════════════════════════════════════════╗");
+    tracing::info!("║   WebSocket Market Monitor Started               ║");
+    tracing::info!("╚═══════════════════════════════════════════════════╝\n");
 
-    println!("Monitoring:");
-    println!("  ✓ Order book for market 0");
-    println!("  ✓ Account {}", account_index);
-    println!("  ✓ Price movements and spreads");
-    println!("  ✓ Trading opportunities\n");
+    tracing::info!("Monitoring:");
+    tracing::info!("  ✓ Order book for market 0");
+    tracing::info!("  ✓ Account {}", account_index);
+    tracing::info!("  ✓ Price movements and spreads");
+    tracing::info!("  ✓ Trading opportunities\n");
 
-    println!("Trading Logic:");
-    println!("  • Track mid price changes");
-    println!("  • Trade on >0.1% price moves");
-    println!("  • Demo limit: 2 trades max\n");
+    tracing::info!("Trading Logic:");
+    tracing::info!("  • Track mid price changes");
+    tracing::info!("  • Trade on >0.1% price moves");
+    tracing::info!("  • Demo limit: 2 trades max\n");
 
-    println!("Press Ctrl+C to stop");
-    println!("{}\n", "═".repeat(50));
+    tracing::info!("Press Ctrl+C to stop");
+    tracing::info!("{}\n", "═".repeat(50));
 
     // Run WebSocket client
     match ws_client.run(on_order_book_update, on_account_update).await {
-        Ok(_) => println!("\n✓ WebSocket closed normally"),
+        Ok(_) => tracing::info!("\n✓ WebSocket closed normally"),
         Err(e) => {
-            eprintln!("\n✗ WebSocket error: {}", e);
-            eprintln!("\nTroubleshooting:");
-            eprintln!("  1. Check your internet connection");
-            eprintln!("  2. Verify API URL in .env: {}", api_url);
-            eprintln!("  3. Ensure WebSocket endpoint is accessible");
-            eprintln!("  4. Try: wss://{}/stream", ws_host);
+            etracing::info!("\n✗ WebSocket error: {}", e);
+            etracing::info!("\nTroubleshooting:");
+            etracing::info!("  1. Check your internet connection");
+            etracing::info!("  2. Verify API URL in .env: {}", api_url);
+            etracing::info!("  3. Ensure WebSocket endpoint is accessible");
+            etracing::info!("  4. Try: wss://{}/stream", ws_host);
         }
     }
 
-    println!("\n═══ Session Summary ═══");
-    println!(
+    tracing::info!("\n═══ Session Summary ═══");
+    tracing::info!(
         "  Order Book Updates: {}",
         update_count.load(Ordering::Relaxed)
     );
-    println!("  Trades Placed: {}", trade_count.load(Ordering::Relaxed));
+    tracing::info!("  Trades Placed: {}", trade_count.load(Ordering::Relaxed));
 
     Ok(())
 }

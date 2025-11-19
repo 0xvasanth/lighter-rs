@@ -6,10 +6,12 @@
 
 use lighter_rs::client::TxClient;
 use lighter_rs::types::{BurnSharesTxReq, CreatePublicPoolTxReq, MintSharesTxReq, TransactOpts};
+use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("=== Lighter RS: Pool Operations Example ===\n");
+    tracing_subscriber::fmt::init();
+    tracing::info!("=== Lighter RS: Pool Operations Example ===\n");
 
     // Initialize the transaction client
     let tx_client = TxClient::new(
@@ -20,10 +22,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         1,     // Chain ID
     )?;
 
-    println!("✓ Transaction client initialized\n");
+    tracing::info!("✓ Transaction client initialized\n");
 
     // Example 1: Create a public pool
-    println!("=== Creating Public Pool ===");
+    tracing::info!("=== Creating Public Pool ===");
     let pool_req = CreatePublicPoolTxReq {
         operator_fee: 10000,              // 1% (10000 / 1000000)
         initial_total_shares: 1000000000, // 1B shares
@@ -42,19 +44,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .create_public_pool(&pool_req, Some(opts.clone()))
         .await?;
 
-    println!("✓ Pool creation transaction signed");
-    println!(
+    tracing::info!("✓ Pool creation transaction signed");
+    tracing::info!(
         "  Operator Fee: {}%",
         pool_req.operator_fee as f64 / 10000.0
     );
-    println!("  Initial Shares: {}", pool_req.initial_total_shares);
-    println!(
+    tracing::info!("  Initial Shares: {}", pool_req.initial_total_shares);
+    tracing::info!(
         "  Min Operator Share Rate: {}%\n",
         pool_req.min_operator_share_rate as f64 / 10000.0
     );
 
     // Example 2: Mint shares
-    println!("=== Minting Shares ===");
+    tracing::info!("=== Minting Shares ===");
     let mint_req = MintSharesTxReq {
         public_pool_index: 123,
         share_amount: 100000,
@@ -65,12 +67,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let _mint_tx = tx_client.mint_shares(&mint_req, Some(opts2)).await?;
 
-    println!("✓ Mint shares transaction signed");
-    println!("  Pool Index: {}", mint_req.public_pool_index);
-    println!("  Share Amount: {}\n", mint_req.share_amount);
+    tracing::info!("✓ Mint shares transaction signed");
+    tracing::info!("  Pool Index: {}", mint_req.public_pool_index);
+    tracing::info!("  Share Amount: {}\n", mint_req.share_amount);
 
     // Example 3: Burn shares
-    println!("=== Burning Shares ===");
+    tracing::info!("=== Burning Shares ===");
     let burn_req = BurnSharesTxReq {
         public_pool_index: 123,
         share_amount: 50000,
@@ -81,11 +83,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let _burn_tx = tx_client.burn_shares(&burn_req, Some(opts3)).await?;
 
-    println!("✓ Burn shares transaction signed");
-    println!("  Pool Index: {}", burn_req.public_pool_index);
-    println!("  Share Amount: {}", burn_req.share_amount);
+    tracing::info!("✓ Burn shares transaction signed");
+    tracing::info!("  Pool Index: {}", burn_req.public_pool_index);
+    tracing::info!("  Share Amount: {}", burn_req.share_amount);
 
-    println!("\n✓ All pool operations completed successfully!");
+    tracing::info!("\n✓ All pool operations completed successfully!");
 
     Ok(())
 }

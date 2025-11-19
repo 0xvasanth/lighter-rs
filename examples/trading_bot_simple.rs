@@ -21,13 +21,15 @@ use serde_json::Value;
 use std::env;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use tracing;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("╔═══════════════════════════════════════════════════╗");
-    println!("║   Lighter RS - Simple Trading Bot Example        ║");
-    println!("║   WARNING: Educational purposes only!             ║");
-    println!("╚═══════════════════════════════════════════════════╝\n");
+    tracing_subscriber::fmt::init();
+    tracing::info!("╔═══════════════════════════════════════════════════╗");
+    tracing::info!("║   Lighter RS - Simple Trading Bot Example        ║");
+    tracing::info!("║   WARNING: Educational purposes only!             ║");
+    tracing::info!("╚═══════════════════════════════════════════════════╝\n");
 
     // Load .env file
     dotenv::dotenv().ok();
@@ -50,10 +52,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let url = "https://mainnet.zklighter.elliot.ai";
     let url_ws = "mainnet.zklighter.elliot.ai";
 
-    println!("Bot Configuration:");
-    println!("  Account: {}", account_index);
-    println!("  Market: {}", market_index);
-    println!("  Mode: Demo (Educational)\n");
+    tracing::info!("Bot Configuration:");
+    tracing::info!("  Account: {}", account_index);
+    tracing::info!("  Market: {}", market_index);
+    tracing::info!("  Mode: Demo (Educational)\n");
 
     // Create trading client
     let tx_client = Arc::new(TxClient::new(
@@ -67,7 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Flag to track if we've placed an order
     let order_placed = Arc::new(AtomicBool::new(false));
 
-    println!("✓ Trading client initialized\n");
+    tracing::info!("✓ Trading client initialized\n");
 
     // Create WebSocket client
     let ws_client = WsClient::builder()
@@ -76,9 +78,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .accounts(vec![account_index])
         .build()?;
 
-    println!("✓ WebSocket client created");
-    println!("  Monitoring market {}", market_index);
-    println!("  Monitoring account {}\n", account_index);
+    tracing::info!("✓ WebSocket client created");
+    tracing::info!("  Monitoring market {}", market_index);
+    tracing::info!("  Monitoring account {}\n", account_index);
 
     // Clone for callbacks
     let tx_client_clone = tx_client.clone();
@@ -86,12 +88,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Order book callback - Simple trading logic
     let on_order_book_update = move |market_id: String, order_book: OrderBook| {
-        println!("📊 Order Book Update - Market {}", market_id);
+        tracing::info!("📊 Order Book Update - Market {}", market_id);
 
         if let (Some(best_ask), Some(best_bid)) = (order_book.asks.first(), order_book.bids.first())
         {
-            println!("  Best Ask: {} @ {}", best_ask.size, best_ask.price);
-            println!("  Best Bid: {} @ {}", best_bid.size, best_bid.price);
+            tracing::info!("  Best Ask: {} @ {}", best_ask.size, best_ask.price);
+            tracing::info!("  Best Bid: {} @ {}", best_bid.size, best_bid.price);
 
             // Parse prices
             if let (Ok(ask_price), Ok(bid_price)) =
@@ -100,11 +102,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let spread = ask_price - bid_price;
                 let spread_bps = (spread / bid_price) * 10000.0;
 
-                println!("  Spread: {:.2} ({:.2} bps)", spread, spread_bps);
+                tracing::info!("  Spread: {:.2} ({:.2} bps)", spread, spread_bps);
 
                 // Simple trading logic: Place order if spread > 10 bps
                 if spread_bps > 10.0 && !order_placed_clone.load(Ordering::Relaxed) {
-                    println!("\n  🎯 Spread > 10 bps detected! Placing order...");
+                    tracing::info!("\n  🎯 Spread > 10 bps detected! Placing order...");
 
                     let tx_client = tx_client_clone.clone();
                     let order_placed = order_placed_clone.clone();
@@ -127,63 +129,63 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             .await
                         {
                             Ok(order) => {
-                                println!("  ✓ Order created and signed");
+                                tracing::info!("  ✓ Order created and signed");
                                 match tx_client.send_transaction(&order).await {
                                     Ok(response) => {
                                         if response.code == 200 {
-                                            println!("  ✓ Order submitted successfully!");
+                                            tracing::info!("  ✓ Order submitted successfully!");
                                             if let Some(hash) = response.tx_hash {
-                                                println!("    Tx Hash: {}", hash);
+                                                tracing::info!("    Tx Hash: {}", hash);
                                             }
                                             order_placed.store(true, Ordering::Relaxed);
                                         } else {
-                                            println!("  ✗ Order failed: {:?}", response.message);
+                                            tracing::info!("  ✗ Order failed: {:?}", response.message);
                                         }
                                     }
-                                    Err(e) => println!("  ✗ Submit error: {}", e),
+                                    Err(e) => tracing::info!("  ✗ Submit error: {}", e),
                                 }
                             }
-                            Err(e) => println!("  ✗ Order creation error: {}", e),
+                            Err(e) => tracing::info!("  ✗ Order creation error: {}", e),
                         }
                     });
                 }
             }
         }
-        println!();
+        tracing::info!();
     };
 
     // Account callback - Monitor our positions
     let on_account_update = move |account_id: String, account_data: Value| {
-        println!("👤 Account Update - ID: {}", account_id);
+        tracing::info!("👤 Account Update - ID: {}", account_id);
 
         if let Some(obj) = account_data.as_object() {
             if let Some(balance) = obj.get("usdc_balance") {
-                println!("  Balance: {} USDC", balance);
+                tracing::info!("  Balance: {} USDC", balance);
             }
 
             if let Some(orders) = obj.get("orders").and_then(|o| o.as_array()) {
-                println!("  Active Orders: {}", orders.len());
+                tracing::info!("  Active Orders: {}", orders.len());
             }
 
             if let Some(positions) = obj.get("positions").and_then(|p| p.as_array()) {
                 if !positions.is_empty() {
-                    println!("  Open Positions: {}", positions.len());
+                    tracing::info!("  Open Positions: {}", positions.len());
                 }
             }
 
             if let Some(pnl) = obj.get("unrealized_pnl") {
-                println!("  Unrealized PnL: {}", pnl);
+                tracing::info!("  Unrealized PnL: {}", pnl);
             }
         }
-        println!();
+        tracing::info!();
     };
 
-    println!("╔═══════════════════════════════════════════════════╗");
-    println!("║   Trading Bot Started                             ║");
-    println!("╚═══════════════════════════════════════════════════╝");
-    println!("\nStrategy: Place order when spread > 10 bps");
-    println!("Press Ctrl+C to stop\n");
-    println!("{}\n", "═".repeat(50));
+    tracing::info!("╔═══════════════════════════════════════════════════╗");
+    tracing::info!("║   Trading Bot Started                             ║");
+    tracing::info!("╚═══════════════════════════════════════════════════╝");
+    tracing::info!("\nStrategy: Place order when spread > 10 bps");
+    tracing::info!("Press Ctrl+C to stop\n");
+    tracing::info!("{}\n", "═".repeat(50));
 
     // Run the WebSocket client
     ws_client

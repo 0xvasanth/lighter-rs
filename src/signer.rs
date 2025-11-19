@@ -51,7 +51,7 @@ impl PoseidonKeyManager {
     fn derive_public_key(private_key: &[u8]) -> Result<Vec<u8>> {
         // Convert private key bytes to ScalarField
         let scalar = ScalarField::from_bytes_le(private_key)
-            .map_err(|e| LighterError::CryptoError(format!("Invalid private key: {:?}", e)))?;
+            .map_err(|e| LighterError::CryptoError(format!("Invalid private key: {e:?}")))?;
 
         // Derive public key: G * private_key
         let public_key_point = Point::generator().mul(&scalar);
@@ -81,7 +81,7 @@ impl PoseidonKeyManager {
 
         // Create ScalarField from the nonce bytes
         ScalarField::from_bytes_le(&nonce_bytes)
-            .map_err(|e| LighterError::CryptoError(format!("Nonce generation failed: {:?}", e)))
+            .map_err(|e| LighterError::CryptoError(format!("Nonce generation failed: {e:?}")))
     }
 }
 
@@ -101,7 +101,7 @@ impl Signer for PoseidonKeyManager {
 
         // Sign the message using Schnorr signature scheme
         let signature = sign_with_nonce(&self.private_key, hashed_message, &nonce.to_bytes_le())
-            .map_err(|e| LighterError::CryptoError(format!("Signing failed: {:?}", e)))?;
+            .map_err(|e| LighterError::CryptoError(format!("Signing failed: {e:?}")))?;
 
         if signature.len() != SIGNATURE_LENGTH {
             return Err(LighterError::CryptoError(format!(

@@ -162,10 +162,10 @@ impl WsClient {
     {
         // Connect to WebSocket
         let (ws_stream, _) = connect_async(&self.base_url).await.map_err(|e| {
-            LighterError::InvalidConfiguration(format!("WebSocket connection failed: {}", e))
+            LighterError::InvalidConfiguration(format!("WebSocket connection failed: {e}"))
         })?;
 
-        println!("✓ WebSocket connected to {}", self.base_url);
+        tracing::info!(base_url = %self.base_url, "WebSocket connected");
 
         let (mut write, mut read) = ws_stream.split();
 
@@ -182,7 +182,7 @@ impl WsClient {
         // Message handling loop
         while let Some(message) = read.next().await {
             let message = message
-                .map_err(|e| LighterError::InvalidResponse(format!("WebSocket error: {}", e)))?;
+                .map_err(|e| LighterError::InvalidResponse(format!("WebSocket error: {e}")))?;
 
             if let Message::Text(text) = message {
                 let parsed: Value = serde_json::from_str(&text)?;
@@ -190,30 +190,30 @@ impl WsClient {
 
                 match msg_type {
                     Some("connected") => {
-                        println!("✓ WebSocket connection established");
+                        tracing::info!("WebSocket connection established");
                         // Send subscriptions
                         for market_id in &order_book_ids {
                             let sub_msg = SubscribeMessage {
                                 msg_type: "subscribe".to_string(),
-                                channel: format!("order_book/{}", market_id),
+                                channel: format!("order_book/{market_id}"),
                             };
                             let json = serde_json::to_string(&sub_msg)?;
                             write.send(Message::Text(json)).await.map_err(|e| {
-                                LighterError::InvalidResponse(format!("Send error: {}", e))
+                                LighterError::InvalidResponse(format!("Send error: {e}"))
                             })?;
-                            println!("  → Subscribed to order_book/{}", market_id);
+                            tracing::debug!(market_id = %market_id, "Subscribed to order_book");
                         }
 
                         for account_id in &account_ids {
                             let sub_msg = SubscribeMessage {
                                 msg_type: "subscribe".to_string(),
-                                channel: format!("account_all/{}", account_id),
+                                channel: format!("account_all/{account_id}"),
                             };
                             let json = serde_json::to_string(&sub_msg)?;
                             write.send(Message::Text(json)).await.map_err(|e| {
-                                LighterError::InvalidResponse(format!("Send error: {}", e))
+                                LighterError::InvalidResponse(format!("Send error: {e}"))
                             })?;
-                            println!("  → Subscribed to account_all/{}", account_id);
+                            tracing::debug!(account_id = %account_id, "Subscribed to account_all");
                         }
                     }
                     Some("subscribed/order_book") => {
@@ -263,7 +263,7 @@ impl WsClient {
                         }
                     }
                     _ => {
-                        eprintln!("Unhandled message type: {:?}", msg_type);
+                        tracing::warn!(msg_type = ?msg_type, "Unhandled message type");
                     }
                 }
             }

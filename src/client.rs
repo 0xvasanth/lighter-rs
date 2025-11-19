@@ -78,10 +78,12 @@ impl HTTPClient {
             form_data.push(("price_protection", "true".to_string()));
         }
 
-        // Debug: print request
-        eprintln!(
-            "DEBUG - Sending request as form data: tx_type={}, tx_info={}, price_protection={}",
-            tx_type, tx_info, self.fat_finger_protection
+        // Debug: log request
+        tracing::debug!(
+            tx_type = %tx_type,
+            tx_info = %tx_info,
+            price_protection = %self.fat_finger_protection,
+            "Sending request as form data"
         );
 
         let response = self.client.post(&url).form(&form_data).send().await?;
@@ -92,8 +94,7 @@ impl HTTPClient {
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
             return Err(LighterError::ApiError(format!(
-                "Failed to send transaction: {}",
-                error_text
+                "Failed to send transaction: {error_text}"
             )));
         }
 
