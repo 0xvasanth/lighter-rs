@@ -192,9 +192,33 @@ impl TxInfo for L2ChangePubKeyTxInfo {
         Ok(())
     }
 
-    fn hash(&self, _lighter_chain_id: u32) -> Result<Vec<u8>> {
-        // TODO: Implement Poseidon2 hashing
-        Ok(vec![0u8; 40])
+    fn hash(&self, lighter_chain_id: u32) -> Result<Vec<u8>> {
+        use poseidon_hash::{hash_to_quintic_extension, Goldilocks};
+
+        let mut elements = Vec::new();
+
+        // Add chain ID and transaction type
+        elements.push(Goldilocks::from(lighter_chain_id as u64));
+        elements.push(Goldilocks::from(TX_TYPE_L2_CHANGE_PUB_KEY as u64));
+
+        // Add transaction fields
+        elements.push(Goldilocks::from(self.account_index as u64));
+        elements.push(Goldilocks::from(self.api_key_index as u64));
+
+        // Add public key as field elements (40 bytes = 5 * u64)
+        for chunk in self.pub_key.chunks(8) {
+            let mut bytes = [0u8; 8];
+            bytes[..chunk.len()].copy_from_slice(chunk);
+            elements.push(Goldilocks::from(u64::from_le_bytes(bytes)));
+        }
+
+        // Add transaction metadata
+        elements.push(Goldilocks::from(self.expired_at as u64));
+        elements.push(Goldilocks::from(self.nonce as u64));
+
+        // Hash using Poseidon2
+        let hash_result = hash_to_quintic_extension(&elements);
+        Ok(hash_result.to_bytes_le().to_vec())
     }
 }
 
