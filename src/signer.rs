@@ -3,6 +3,7 @@
 use crate::constants::{PRIVATE_KEY_LENGTH, PUBLIC_KEY_LENGTH, SIGNATURE_LENGTH};
 use crate::errors::{LighterError, Result};
 use crate::utils::hex_to_bytes;
+use goldilocks_crypto::{sign_with_nonce, Point, ScalarField};
 
 /// Trait for signing messages
 pub trait Signer {
@@ -47,22 +48,70 @@ impl PoseidonKeyManager {
         Self::new(&bytes)
     }
 
-    fn derive_public_key(_private_key: &[u8]) -> Result<Vec<u8>> {
-        // TODO: Implement actual Schnorr public key derivation with Poseidon crypto
-        Ok(vec![0u8; PUBLIC_KEY_LENGTH])
+    fn derive_public_key(private_key: &[u8]) -> Result<Vec<u8>> {
+        // Convert private key bytes to ScalarField
+        let scalar = ScalarField::from_bytes_le(private_key)
+            .map_err(|e| LighterError::CryptoError(format!("Invalid private key: {:?}", e)))?;
+
+        // Derive public key: G * private_key
+        let public_key_point = Point::generator().mul(&scalar);
+
+        // Encode the public key as Fp5Element
+        let pub_key_encoded = public_key_point.encode();
+
+        // Convert to bytes
+        Ok(pub_key_encoded.to_bytes_le().to_vec())
+    }
+
+    /// Generate a deterministic nonce from private key and message
+    /// This follows the RFC 6979 approach for deterministic signatures
+    fn generate_nonce(private_key: &[u8], message: &[u8]) -> Result<ScalarField> {
+        use sha2::{Digest, Sha256};
+
+        // Combine private key and message
+        let mut hasher = Sha256::new();
+        hasher.update(private_key);
+        hasher.update(message);
+        let hash_result = hasher.finalize();
+
+        // Convert hash to nonce (take first 40 bytes, pad if needed)
+        let mut nonce_bytes = [0u8; 40];
+        let copy_len = hash_result.len().min(32);
+        nonce_bytes[..copy_len].copy_from_slice(&hash_result[..copy_len]);
+
+        // Create ScalarField from the nonce bytes
+        ScalarField::from_bytes_le(&nonce_bytes)
+            .map_err(|e| LighterError::CryptoError(format!("Nonce generation failed: {:?}", e)))
     }
 }
 
 impl Signer for PoseidonKeyManager {
     fn sign(&self, hashed_message: &[u8]) -> Result<Vec<u8>> {
+        // The hashed message should be 40 bytes (5 * 8 bytes for Fp5Element)
         if hashed_message.len() != 40 {
             return Err(LighterError::CryptoError(format!(
                 "Invalid hashed message length: expected 40, got {}",
                 hashed_message.len()
             )));
         }
-        // TODO: Implement actual Schnorr signing with Poseidon crypto
-        Ok(vec![0u8; SIGNATURE_LENGTH])
+
+        // Generate a deterministic nonce from the message and private key
+        // This ensures the same message always produces the same signature with the same key
+        let nonce = Self::generate_nonce(&self.private_key, hashed_message)?;
+
+        // Sign the message using Schnorr signature scheme
+        let signature = sign_with_nonce(&self.private_key, hashed_message, &nonce.to_bytes_le())
+            .map_err(|e| LighterError::CryptoError(format!("Signing failed: {:?}", e)))?;
+
+        if signature.len() != SIGNATURE_LENGTH {
+            return Err(LighterError::CryptoError(format!(
+                "Invalid signature length: expected {}, got {}",
+                SIGNATURE_LENGTH,
+                signature.len()
+            )));
+        }
+
+        Ok(signature)
     }
 }
 
