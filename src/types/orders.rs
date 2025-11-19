@@ -75,21 +75,25 @@ impl TxInfo for L2CreateOrderTxInfo {
     fn hash(&self, lighter_chain_id: u32) -> Result<Vec<u8>> {
         use poseidon_hash::{hash_to_quintic_extension, Goldilocks};
 
-        // Convert all transaction fields to Goldilocks field elements
-        // The order follows the Lighter Protocol specification
+        // Field order matches lighter-go implementation
+        // See: lighter-go/types/txtypes/create_order.go
         let mut elements = Vec::new();
 
-        // Add chain ID
+        // 1. Chain ID
         elements.push(Goldilocks::from(lighter_chain_id as u64));
 
-        // Add transaction type
+        // 2. Transaction type
         elements.push(Goldilocks::from(TX_TYPE_L2_CREATE_ORDER as u64));
 
-        // Add account info
+        // 3-4. CRITICAL: Nonce and ExpiredAt come BEFORE account info!
+        elements.push(Goldilocks::from(self.nonce as u64));
+        elements.push(Goldilocks::from(self.expired_at as u64));
+
+        // 5-6. Account info
         elements.push(Goldilocks::from(self.account_index as u64));
         elements.push(Goldilocks::from(self.api_key_index as u64));
 
-        // Add order info fields
+        // 7-16. Order info fields
         elements.push(Goldilocks::from(self.order_info.market_index as u64));
         elements.push(Goldilocks::from(self.order_info.client_order_index as u64));
         elements.push(Goldilocks::from(self.order_info.base_amount as u64));
@@ -100,10 +104,6 @@ impl TxInfo for L2CreateOrderTxInfo {
         elements.push(Goldilocks::from(self.order_info.reduce_only as u64));
         elements.push(Goldilocks::from(self.order_info.trigger_price as u64));
         elements.push(Goldilocks::from(self.order_info.order_expiry as u64));
-
-        // Add transaction metadata
-        elements.push(Goldilocks::from(self.expired_at as u64));
-        elements.push(Goldilocks::from(self.nonce as u64));
 
         // Hash using Poseidon2
         let hash_result = hash_to_quintic_extension(&elements);
@@ -211,19 +211,27 @@ impl TxInfo for L2CancelOrderTxInfo {
     fn hash(&self, lighter_chain_id: u32) -> Result<Vec<u8>> {
         use poseidon_hash::{hash_to_quintic_extension, Goldilocks};
 
+        // Field order matches lighter-go implementation
+        // See: lighter-go/types/txtypes/cancel_order.go
         let mut elements = Vec::new();
 
-        // Add chain ID and transaction type
+        // 1. Chain ID
         elements.push(Goldilocks::from(lighter_chain_id as u64));
+
+        // 2. Transaction type
         elements.push(Goldilocks::from(TX_TYPE_L2_CANCEL_ORDER as u64));
 
-        // Add transaction fields
+        // 3-4. Nonce and ExpiredAt (BEFORE account info!)
+        elements.push(Goldilocks::from(self.nonce as u64));
+        elements.push(Goldilocks::from(self.expired_at as u64));
+
+        // 5-6. Account info
         elements.push(Goldilocks::from(self.account_index as u64));
         elements.push(Goldilocks::from(self.api_key_index as u64));
+
+        // 7-8. Cancel order fields
         elements.push(Goldilocks::from(self.market_index as u64));
         elements.push(Goldilocks::from(self.index as u64));
-        elements.push(Goldilocks::from(self.expired_at as u64));
-        elements.push(Goldilocks::from(self.nonce as u64));
 
         // Hash using Poseidon2
         let hash_result = hash_to_quintic_extension(&elements);
@@ -275,22 +283,30 @@ impl TxInfo for L2ModifyOrderTxInfo {
     fn hash(&self, lighter_chain_id: u32) -> Result<Vec<u8>> {
         use poseidon_hash::{hash_to_quintic_extension, Goldilocks};
 
+        // Field order matches lighter-go implementation
+        // See: lighter-go/types/txtypes/modify_order.go
         let mut elements = Vec::new();
 
-        // Add chain ID and transaction type
+        // 1. Chain ID
         elements.push(Goldilocks::from(lighter_chain_id as u64));
+
+        // 2. Transaction type
         elements.push(Goldilocks::from(TX_TYPE_L2_MODIFY_ORDER as u64));
 
-        // Add transaction fields
+        // 3-4. Nonce and ExpiredAt (BEFORE account info!)
+        elements.push(Goldilocks::from(self.nonce as u64));
+        elements.push(Goldilocks::from(self.expired_at as u64));
+
+        // 5-6. Account info
         elements.push(Goldilocks::from(self.account_index as u64));
         elements.push(Goldilocks::from(self.api_key_index as u64));
+
+        // 7-11. Modify order fields
         elements.push(Goldilocks::from(self.market_index as u64));
         elements.push(Goldilocks::from(self.index as u64));
         elements.push(Goldilocks::from(self.base_amount as u64));
         elements.push(Goldilocks::from(self.price as u64));
         elements.push(Goldilocks::from(self.trigger_price as u64));
-        elements.push(Goldilocks::from(self.expired_at as u64));
-        elements.push(Goldilocks::from(self.nonce as u64));
 
         // Hash using Poseidon2
         let hash_result = hash_to_quintic_extension(&elements);

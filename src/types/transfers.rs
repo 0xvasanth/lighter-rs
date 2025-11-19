@@ -195,26 +195,31 @@ impl TxInfo for L2ChangePubKeyTxInfo {
     fn hash(&self, lighter_chain_id: u32) -> Result<Vec<u8>> {
         use poseidon_hash::{hash_to_quintic_extension, Goldilocks};
 
+        // Field order matches lighter-go implementation
+        // See: lighter-go/types/txtypes/change_pub_key.go
         let mut elements = Vec::new();
 
-        // Add chain ID and transaction type
+        // 1. Chain ID
         elements.push(Goldilocks::from(lighter_chain_id as u64));
+
+        // 2. Transaction type
         elements.push(Goldilocks::from(TX_TYPE_L2_CHANGE_PUB_KEY as u64));
 
-        // Add transaction fields
+        // 3-4. Nonce and ExpiredAt (BEFORE account info!)
+        elements.push(Goldilocks::from(self.nonce as u64));
+        elements.push(Goldilocks::from(self.expired_at as u64));
+
+        // 5-6. Account info
         elements.push(Goldilocks::from(self.account_index as u64));
         elements.push(Goldilocks::from(self.api_key_index as u64));
 
-        // Add public key as field elements (40 bytes = 5 * u64)
+        // 7+. Public key as field elements (40 bytes = 5 * u64)
+        // Convert from canonical little-endian bytes to field elements
         for chunk in self.pub_key.chunks(8) {
             let mut bytes = [0u8; 8];
             bytes[..chunk.len()].copy_from_slice(chunk);
             elements.push(Goldilocks::from(u64::from_le_bytes(bytes)));
         }
-
-        // Add transaction metadata
-        elements.push(Goldilocks::from(self.expired_at as u64));
-        elements.push(Goldilocks::from(self.nonce as u64));
 
         // Hash using Poseidon2
         let hash_result = hash_to_quintic_extension(&elements);
