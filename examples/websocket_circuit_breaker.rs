@@ -142,7 +142,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("  WebSocket: wss://{}/stream", ws_host);
     tracing::info!("  Account: {}", account_index);
     tracing::info!("  Chain ID: {}", chain_id);
-    tracing::info!();
+    tracing::info!("");
 
     // Create trading client
     let tx_client = Arc::new(TxClient::new(
@@ -280,7 +280,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     }
                 }
             }
-            tracing::info!();
+            tracing::info!("");
         });
     };
 
@@ -331,7 +331,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 tracing::info!("  💹 Unrealized PnL: {}", pnl);
             }
         }
-        tracing::info!();
+        tracing::info!("");
     };
 
     tracing::info!("╔═══════════════════════════════════════════════════╗");

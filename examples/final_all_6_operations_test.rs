@@ -291,26 +291,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing::info!("╔═══════════════════════════════════════════════════════════╗");
         tracing::info!("║         🎉🎉🎉 PERFECT SCORE! 🎉🎉🎉                    ║");
         tracing::info!("╚═══════════════════════════════════════════════════════════╝");
-        tracing::info!();
+        tracing::info!("");
         tracing::info!("ALL 6 TRADING OPERATIONS VERIFIED WORKING!");
-        tracing::info!();
+        tracing::info!("");
         tracing::info!("✅ Open positions");
         tracing::info!("✅ Close positions");
         tracing::info!("✅ Place limit orders");
         tracing::info!("✅ Modify orders");
         tracing::info!("✅ Cancel orders");
         tracing::info!("✅ Stop loss orders");
-        tracing::info!();
+        tracing::info!("");
         tracing::info!("🚀 SDK IS 100% PRODUCTION READY!");
     } else if passed >= 4 {
         tracing::info!("╔═══════════════════════════════════════════════════════════╗");
         tracing::info!("║              SDK IS FUNCTIONAL! ✅                        ║");
         tracing::info!("╚═══════════════════════════════════════════════════════════╝");
-        tracing::info!();
+        tracing::info!("");
         tracing::info!("{} out of {} core operations working!", passed, total);
-        tracing::info!();
+        tracing::info!("");
         tracing::info!("✅ Sufficient for production trading!");
-        tracing::info!();
+        tracing::info!("");
         if passed < total {
             tracing::info!("Note: Some operations failed due to:");
             tracing::info!("  - Margin requirements (limit orders)");

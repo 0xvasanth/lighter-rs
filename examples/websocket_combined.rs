@@ -59,7 +59,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 tracing::info!("  Mid Price: {:.2}", mid);
             }
         }
-        tracing::info!();
+        tracing::info!("");
     };
 
     // Account update callback
@@ -82,7 +82,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 tracing::info!("  Unrealized PnL: {}", pnl);
             }
         }
-        tracing::info!();
+        tracing::info!("");
     };
 
     tracing::info!("Starting WebSocket monitor...");

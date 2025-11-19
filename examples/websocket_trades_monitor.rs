@@ -203,7 +203,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     *last_mid = mid_price;
                 });
 
-                tracing::info!();
+                tracing::info!("");
             }
         }
     };
@@ -247,7 +247,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
-        tracing::info!();
+        tracing::info!("");
     };
 
     tracing::info!("╔═══════════════════════════════════════════════════╗");

@@ -38,7 +38,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("   Account: {}", account_index);
     tracing::info!("   API Key Index: {}", api_key_index);
     tracing::info!("   Chain: {}", if chain_id == 304 { "Mainnet" } else { "Testnet" });
-    tracing::info!();
+    tracing::info!("");
 
     // Initialize client
     tracing::info!("🔌 Step 1: Initialize Client");
@@ -67,7 +67,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("   Amount: ${:.2}", order_amount as f64 / 1_000_000.0);
     tracing::info!("   Order Index: {}", client_order_index);
     tracing::info!("   ⚠️  Price is intentionally low to prevent execution");
-    tracing::info!();
+    tracing::info!("");
 
     let order = match tx_client.create_limit_order(
         market_index,
@@ -86,7 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let nonzero_count = sig.iter().filter(|&&b| b != 0).count();
                 tracing::info!("   ✅ Signature: {} non-zero bytes (valid)", nonzero_count);
             }
-            tracing::info!();
+            tracing::info!("");
             order
         }
         Err(e) => {
@@ -115,17 +115,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 21701 => {
                     tracing::info!("   ❌ Error 21701: Invalid base amount");
-                    tracing::info!();
+                    tracing::info!("");
                     tracing::info!("   💡 This typically means:");
                     tracing::info!("      • API key not registered");
                     tracing::info!("      • Insufficient balance");
                     tracing::info!("      • Below minimum order size");
-                    tracing::info!();
+                    tracing::info!("");
                     tracing::info!("   🔧 Fix: Register API key at https://app.lighter.xyz");
                 }
                 21109 => {
                     tracing::info!("   ❌ Error 21109: API key not found");
-                    tracing::info!();
+                    tracing::info!("");
                     tracing::info!("   💡 Your API key is not registered");
                     tracing::info!("   🔧 Fix:");
                     tracing::info!("      1. Go to https://app.lighter.xyz");
@@ -143,7 +143,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             tracing::info!("   ❌ Submission failed: {}", e);
         }
     }
-    tracing::info!();
+    tracing::info!("");
 
     if !order_placed {
         tracing::info!("╔═══════════════════════════════════════════════════╗");
@@ -154,16 +154,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing::info!("   • Order creation");
         tracing::info!("   • Signature generation (Poseidon/Schnorr)");
         tracing::info!("   • API communication");
-        tracing::info!();
+        tracing::info!("");
         tracing::info!("❌ What needs fixing:");
         tracing::info!("   • API credentials not valid/registered");
-        tracing::info!();
+        tracing::info!("");
         tracing::info!("📚 Next Steps:");
         tracing::info!("   1. Register API key at https://app.lighter.xyz");
         tracing::info!("   2. Fund your account");
         tracing::info!("   3. Update .env with valid credentials");
         tracing::info!("   4. Re-run this test");
-        tracing::info!();
+        tracing::info!("");
         return Ok(());
     }
 
@@ -180,7 +180,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     tracing::info!("   Status: OPEN (pending on order book)");
     tracing::info!("   Note: Order won't fill (price too low)");
-    tracing::info!();
+    tracing::info!("");
 
     // Cancel the order
     tracing::info!("🛑 Step 7: Cancel Order");
@@ -221,7 +221,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             tracing::info!("   ❌ Failed to create cancel: {}", e);
         }
     }
-    tracing::info!();
+    tracing::info!("");
 
     // Final status
     tracing::info!("⏳ Step 9: Wait for Cancellation Confirmation");
@@ -241,7 +241,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("   ✓ Order cancellation");
     tracing::info!("   ✓ API key authentication");
     tracing::info!("   ✓ Transaction submission");
-    tracing::info!();
+    tracing::info!("");
 
     tracing::info!("📈 Trade Lifecycle:");
     tracing::info!("   1. Created limit order at ${}", order_price as f64 / 1_000_000.0);
@@ -249,32 +249,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("   3. Order placed on book ✓");
     tracing::info!("   4. Cancelled successfully ✓");
     tracing::info!("   5. No money lost ✓");
-    tracing::info!();
+    tracing::info!("");
 
     tracing::info!("🎯 Result:");
     tracing::info!("   Your Lighter API integration is FULLY FUNCTIONAL!");
-    tracing::info!();
+    tracing::info!("");
 
     tracing::info!("🚀 You're Ready To Trade!");
     tracing::info!("   - Place real orders");
     tracing::info!("   - Manage positions");
     tracing::info!("   - Build trading bots");
     tracing::info!("   - Implement strategies");
-    tracing::info!();
+    tracing::info!("");
 
     tracing::info!("⚠️  Safety Notes:");
     tracing::info!("   • Always test with small amounts first");
     tracing::info!("   • Use stop-losses for risk management");
     tracing::info!("   • Monitor positions actively");
     tracing::info!("   • Start with limit orders far from market");
-    tracing::info!();
+    tracing::info!("");
 
     tracing::info!("📚 Resources:");
     tracing::info!("   • SDK Examples: ./examples/");
     tracing::info!("   • Troubleshooting: ./TROUBLESHOOTING.md");
     tracing::info!("   • API Docs: https://apidocs.lighter.xyz");
     tracing::info!("   • Lighter App: https://app.lighter.xyz");
-    tracing::info!();
+    tracing::info!("");
 
     Ok(())
 }

@@ -65,7 +65,7 @@ use tracing;
         tracing::info!("  ⚠️  Low entropy in signature");
     }
 
-    tracing::info!();
+    tracing::info!("");
 
     // Test 2: Create another order to verify different signatures
     tracing::info!("Test 2: Different messages produce different signatures");
@@ -88,19 +88,19 @@ use tracing;
         tracing::info!("  ✅ Different signatures for different messages");
     }
 
-    tracing::info!();
+    tracing::info!("");
     tracing::info!("=== Summary ===");
     tracing::info!("✅ Poseidon signing is IMPLEMENTED");
     tracing::info!("✅ Signatures are cryptographically generated");
     tracing::info!("✅ NOT using stub implementation anymore");
-    tracing::info!();
+    tracing::info!("");
     tracing::info!("Issue #4 Status: RESOLVED ✅");
-    tracing::info!();
+    tracing::info!("");
     tracing::info!("Note: API may still reject orders due to:");
     tracing::info!("  - Invalid base amount (market-specific requirements)");
     tracing::info!("  - API key validation");
     tracing::info!("  - Account balance");
-    tracing::info!();
+    tracing::info!("");
     tracing::info!("But these are business logic errors, not signing errors!");
 
     Ok(())

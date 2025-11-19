@@ -314,7 +314,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing::info!("╔═══════════════════════════════════════════════════════════╗");
         tracing::info!("║           🎉🎉🎉 PERFECT! ALL 6 WORKING! 🎉🎉🎉          ║");
         tracing::info!("╚═══════════════════════════════════════════════════════════╝");
-        tracing::info!();
+        tracing::info!("");
         tracing::info!("ALL TRADING OPERATIONS VERIFIED:");
         tracing::info!("  ✅ Open positions");
         tracing::info!("  ✅ Place limit orders");
@@ -322,19 +322,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing::info!("  ✅ Cancel orders");
         tracing::info!("  ✅ Stop loss orders");
         tracing::info!("  ✅ Close positions");
-        tracing::info!();
+        tracing::info!("");
         tracing::info!("🚀 SDK IS 100% PRODUCTION READY!");
         tracing::info!("🎯 All mandatory trading platform features working!");
         tracing::info!("💰 Total test cost: < $2");
     } else if passed >= 4 {
         tracing::info!("✅ SDK IS FUNCTIONAL!");
-        tracing::info!();
+        tracing::info!("");
         tracing::info!("{}/{} operations working", passed, total);
-        tracing::info!();
+        tracing::info!("");
         tracing::info!("Core features verified - sufficient for production!");
     } else {
         tracing::info!("Partial success: {}/{} working", passed, total);
-        tracing::info!();
+        tracing::info!("");
         tracing::info!("Note: Failures likely due to account/margin configuration");
         tracing::info!("       The SDK implementation is correct.");
     }

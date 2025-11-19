@@ -151,7 +151,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             }
         }
-        tracing::info!();
+        tracing::info!("");
     };
 
     // Account callback - Monitor our positions
@@ -177,7 +177,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 tracing::info!("  Unrealized PnL: {}", pnl);
             }
         }
-        tracing::info!();
+        tracing::info!("");
     };
 
     tracing::info!("╔═══════════════════════════════════════════════════╗");

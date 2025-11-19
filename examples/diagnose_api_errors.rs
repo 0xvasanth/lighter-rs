@@ -31,7 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("  API Key Index: {}", api_key_index);
     tracing::info!("  Chain ID: {}", chain_id);
     tracing::info!("  API Key Length: {} chars", private_key.len());
-    tracing::info!();
+    tracing::info!("");
 
     // Initialize client
     let tx_client = match TxClient::new(&api_url, &private_key, account_index, api_key_index, chain_id) {
@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             return Err(e.into());
         }
     };
-    tracing::info!();
+    tracing::info!("");
 
     // Error 1: Check "invalid base amount"
     tracing::info!("=== Error 1: 'invalid base amount' ===\n");
@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("  1. Base amount is below minimum order size for the market");
     tracing::info!("  2. Base amount doesn't match the market's step size");
     tracing::info!("  3. Decimals are incorrect for the market");
-    tracing::info!();
+    tracing::info!("");
 
     tracing::info!("Testing different base amounts for market 0 (ETH)...\n");
 
@@ -100,7 +100,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 tracing::info!("    ❌ Order creation failed: {}", e);
             }
         }
-        tracing::info!();
+        tracing::info!("");
     }
 
     tracing::info!("\n🔧 Solutions for 'invalid base amount':");
@@ -108,7 +108,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("   2. For ETH (market 0): Try amounts >= $10 (10_000_000 with 6 decimals)");
     tracing::info!("   3. Verify you're using correct decimals (usually 6 for base_amount)");
     tracing::info!("   4. Check market specifications: amount_step, min_order_size");
-    tracing::info!();
+    tracing::info!("");
 
     // Error 2: Check "api key not found"
     tracing::info!("\n=== Error 2: 'api key not found' ===\n");
@@ -116,7 +116,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("  - The API key is not registered on Lighter");
     tracing::info!("  - The account_index or api_key_index doesn't match");
     tracing::info!("  - The API key format is incorrect");
-    tracing::info!();
+    tracing::info!("");
 
     tracing::info!("🔧 Solutions for 'api key not found':");
     tracing::info!("   1. Verify your API key is registered at https://app.lighter.xyz");
@@ -124,25 +124,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("   3. Verify api_key_index (usually 0, 1, or 2)");
     tracing::info!("   4. Ensure API key is 40-byte hex without '0x' prefix");
     tracing::info!("   5. Try regenerating your API key if unsure");
-    tracing::info!();
+    tracing::info!("");
 
     tracing::info!("\n=== Additional Debugging ===\n");
     tracing::info!("Your current configuration:");
     tracing::info!("  LIGHTER_API_KEY length: {}", private_key.len());
     tracing::info!("  LIGHTER_ACCOUNT_INDEX: {}", account_index);
     tracing::info!("  LIGHTER_API_KEY_INDEX: {}", api_key_index);
-    tracing::info!();
+    tracing::info!("");
 
     if private_key.starts_with("0x") || private_key.starts_with("0X") {
         tracing::info!("⚠️  WARNING: Your API key starts with '0x'");
         tracing::info!("   Remove the '0x' prefix from your API key in .env file");
-        tracing::info!();
+        tracing::info!("");
     }
 
     if private_key.len() != 80 && private_key.len() != 64 {
         tracing::info!("⚠️  WARNING: Unusual API key length ({} chars)", private_key.len());
         tracing::info!("   Expected: 80 chars (40 bytes hex) or 64 chars (32 bytes hex)");
-        tracing::info!();
+        tracing::info!("");
     }
 
     tracing::info!("\n=== Next Steps ===\n");
@@ -150,7 +150,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("2. Check your account has sufficient balance");
     tracing::info!("3. Try increasing the base_amount to meet minimum requirements");
     tracing::info!("4. Ensure your API key is correctly registered");
-    tracing::info!();
+    tracing::info!("");
     tracing::info!("Need more help? Check the Lighter documentation:");
     tracing::info!("  - API Docs: https://apidocs.lighter.xyz");
     tracing::info!("  - Discord: https://discord.gg/lighter");

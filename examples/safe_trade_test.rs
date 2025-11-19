@@ -33,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("  Account Index: {}", account_index);
     tracing::info!("  API Key Index: {}", api_key_index);
     tracing::info!("  Chain ID: {}", chain_id);
-    tracing::info!();
+    tracing::info!("");
 
     // Initialize client
     tracing::info!("Step 1: Initializing client...");
@@ -57,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("  Price: ${} (far below market - will NOT fill)", safe_price as f64 / 1_000_000.0);
     tracing::info!("  Amount: ${}", base_amount as f64 / 1_000_000.0);
     tracing::info!("  Client Order Index: {}", client_order_index);
-    tracing::info!();
+    tracing::info!("");
 
     tracing::info!("  Creating order...");
     let order = match tx_client.create_limit_order(
@@ -89,7 +89,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             return Err("Invalid signature".into());
         }
     }
-    tracing::info!();
+    tracing::info!("");
 
     // Step 3: Submit the order
     tracing::info!("Step 3: Submitting order to Lighter...");
@@ -102,12 +102,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if let Some(hash) = &response.tx_hash {
                     tracing::info!("  Transaction Hash: {}", hash);
                 }
-                tracing::info!();
+                tracing::info!("");
                 true
             } else {
                 tracing::info!("  ⚠️  Order submission returned non-200 code: {}", response.code);
                 tracing::info!("  Message: {:?}", response.message);
-                tracing::info!();
+                tracing::info!("");
 
                 // Common errors with solutions
                 match response.code {
@@ -127,35 +127,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         tracing::info!("  💡 Check TROUBLESHOOTING.md for error code {}", response.code);
                     }
                 }
-                tracing::info!();
+                tracing::info!("");
                 false
             }
         }
         Err(e) => {
             tracing::info!("  ❌ Failed to submit order: {}", e);
-            tracing::info!();
+            tracing::info!("");
             tracing::info!("  💡 Common causes:");
             tracing::info!("     - Network connection issues");
             tracing::info!("     - Invalid API endpoint");
             tracing::info!("     - API key not registered");
-            tracing::info!();
+            tracing::info!("");
             false
         }
     };
 
     if !order_placed {
         tracing::info!("=== Test Result: Order NOT Placed ===");
-        tracing::info!();
+        tracing::info!("");
         tracing::info!("The order was not placed on Lighter. This means:");
         tracing::info!("  1. ✅ SDK works correctly (order created, signed)");
         tracing::info!("  2. ❌ API credentials are invalid or not registered");
-        tracing::info!();
+        tracing::info!("");
         tracing::info!("📝 Next Steps:");
         tracing::info!("  1. Go to https://app.lighter.xyz");
         tracing::info!("  2. Create/verify your API key");
         tracing::info!("  3. Update .env with correct credentials");
         tracing::info!("  4. Ensure account has sufficient balance");
-        tracing::info!();
+        tracing::info!("");
         tracing::info!("💡 See TROUBLESHOOTING.md for detailed help");
         return Ok(());
     }
@@ -185,11 +185,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         if let Some(hash) = &response.tx_hash {
                             tracing::info!("  Cancellation Tx Hash: {}", hash);
                         }
-                        tracing::info!();
+                        tracing::info!("");
                     } else {
                         tracing::info!("  ⚠️  Cancellation returned code: {}", response.code);
                         tracing::info!("  Message: {:?}", response.message);
-                        tracing::info!();
+                        tracing::info!("");
 
                         if response.code == 21109 {
                             tracing::info!("  Note: Order might not exist or already filled/cancelled");
@@ -199,13 +199,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 Err(e) => {
                     tracing::info!("  ⚠️  Failed to cancel: {}", e);
                     tracing::info!("  Note: Order might not exist on the exchange");
-                    tracing::info!();
+                    tracing::info!("");
                 }
             }
         }
         Err(e) => {
             tracing::info!("  ❌ Failed to create cancel transaction: {}", e);
-            tracing::info!();
+            tracing::info!("");
         }
     }
 
@@ -219,32 +219,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if order_placed { "✅" } else { "⚠️ " },
         if order_placed { "SUCCESS" } else { "FAILED (check credentials)" }
     );
-    tracing::info!();
+    tracing::info!("");
 
     if order_placed {
         tracing::info!("🎉 CONGRATULATIONS!");
-        tracing::info!();
+        tracing::info!("");
         tracing::info!("Your Lighter API is working correctly!");
         tracing::info!("  - Orders can be placed");
         tracing::info!("  - Orders can be cancelled");
         tracing::info!("  - Signatures are valid");
         tracing::info!("  - API key is registered");
-        tracing::info!();
+        tracing::info!("");
         tracing::info!("You're ready to trade on Lighter! 🚀");
     } else {
         tracing::info!("⚠️  API Credentials Issue");
-        tracing::info!();
+        tracing::info!("");
         tracing::info!("The SDK is working perfectly, but your API credentials");
         tracing::info!("are not registered or invalid. Follow the steps above to fix.");
-        tracing::info!();
+        tracing::info!("");
         tracing::info!("💡 The good news: All the hard work is done!");
         tracing::info!("   - Poseidon signing: ✅ Implemented");
         tracing::info!("   - Form data encoding: ✅ Fixed");
         tracing::info!("   - Order creation: ✅ Working");
-        tracing::info!();
+        tracing::info!("");
         tracing::info!("   You just need valid credentials to trade!");
     }
-    tracing::info!();
+    tracing::info!("");
 
     Ok(())
 }
