@@ -79,8 +79,10 @@ impl HTTPClient {
         }
 
         // Debug: print request
-        eprintln!("DEBUG - Sending request as form data: tx_type={}, tx_info={}, price_protection={}",
-                  tx_type, tx_info, self.fat_finger_protection);
+        eprintln!(
+            "DEBUG - Sending request as form data: tx_type={}, tx_info={}, price_protection={}",
+            tx_type, tx_info, self.fat_finger_protection
+        );
 
         let response = self.client.post(&url).form(&form_data).send().await?;
 
@@ -220,25 +222,40 @@ impl TxClient {
     ) -> Result<L2CreateOrderTxInfo> {
         let opts = self.fill_default_opts(opts).await?;
 
+        // Create OrderInfo for internal use
+        let order_info = OrderInfo {
+            market_index: req.market_index,
+            client_order_index: req.client_order_index,
+            base_amount: req.base_amount,
+            price: req.price,
+            is_ask: req.is_ask,
+            order_type: req.order_type,
+            time_in_force: req.time_in_force,
+            reduce_only: req.reduce_only,
+            trigger_price: req.trigger_price,
+            order_expiry: req.order_expiry,
+        };
+
+        // Create tx_info with flattened fields (for serialization)
         let mut tx_info = L2CreateOrderTxInfo {
             account_index: opts.from_account_index.unwrap(),
             api_key_index: opts.api_key_index.unwrap(),
-            order_info: OrderInfo {
-                market_index: req.market_index,
-                client_order_index: req.client_order_index,
-                base_amount: req.base_amount,
-                price: req.price,
-                is_ask: req.is_ask,
-                order_type: req.order_type,
-                time_in_force: req.time_in_force,
-                reduce_only: req.reduce_only,
-                trigger_price: req.trigger_price,
-                order_expiry: req.order_expiry,
-            },
+            // Flatten order_info fields to top level
+            market_index: req.market_index,
+            client_order_index: req.client_order_index,
+            base_amount: req.base_amount,
+            price: req.price,
+            is_ask: req.is_ask,
+            order_type: req.order_type,
+            time_in_force: req.time_in_force,
+            reduce_only: req.reduce_only,
+            trigger_price: req.trigger_price,
+            order_expiry: req.order_expiry,
             expired_at: opts.expired_at,
             nonce: opts.nonce.unwrap(),
             sig: None,
             signed_hash: None,
+            order_info, // Keep for internal use
         };
 
         // Validate
@@ -683,6 +700,9 @@ impl TxClient {
         reduce_only: bool,
         opts: Option<TransactOpts>,
     ) -> Result<L2CreateOrderTxInfo> {
+        // Default order expiry: 28 days from now (matching Python SDK)
+        let default_expiry = chrono::Utc::now().timestamp_millis() + (28 * 24 * 60 * 60 * 1000);
+
         let req = CreateOrderTxReq {
             market_index,
             client_order_index,
@@ -693,7 +713,7 @@ impl TxClient {
             time_in_force: TIME_IN_FORCE_GOOD_TILL_TIME,
             reduce_only: if reduce_only { 1 } else { 0 },
             trigger_price: 0,
-            order_expiry: 0,
+            order_expiry: default_expiry,
         };
 
         self.create_order(&req, opts).await

@@ -161,6 +161,7 @@ pub struct L2ChangePubKeyTxInfo {
     pub expired_at: i64,
     pub nonce: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(with = "crate::types::orders::hex_serde", default)]
     pub sig: Option<Vec<u8>>,
     #[serde(skip)]
     pub signed_hash: Option<String>,
@@ -237,6 +238,7 @@ pub struct L2UpdateLeverageTxInfo {
     pub expired_at: i64,
     pub nonce: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(with = "crate::types::orders::hex_serde", default)]
     pub sig: Option<Vec<u8>>,
     #[serde(skip)]
     pub signed_hash: Option<String>,
@@ -273,9 +275,31 @@ impl TxInfo for L2UpdateLeverageTxInfo {
         Ok(())
     }
 
-    fn hash(&self, _lighter_chain_id: u32) -> Result<Vec<u8>> {
-        // TODO: Implement Poseidon2 hashing
-        Ok(vec![0u8; 40])
+    fn hash(&self, lighter_chain_id: u32) -> Result<Vec<u8>> {
+        use poseidon_hash::{hash_to_quintic_extension, Goldilocks};
+
+        // Field order follows standard pattern
+        let mut elements = Vec::new();
+
+        // 1-2. Chain ID and transaction type
+        elements.push(Goldilocks::from(lighter_chain_id as u64));
+        elements.push(Goldilocks::from(TX_TYPE_L2_UPDATE_LEVERAGE as u64));
+
+        // 3-4. Nonce and ExpiredAt
+        elements.push(Goldilocks::from(self.nonce as u64));
+        elements.push(Goldilocks::from(self.expired_at as u64));
+
+        // 5-6. Account info
+        elements.push(Goldilocks::from(self.account_index as u64));
+        elements.push(Goldilocks::from(self.api_key_index as u64));
+
+        // 7-8. Leverage fields
+        elements.push(Goldilocks::from(self.market_index as u64));
+        elements.push(Goldilocks::from(self.initial_margin_fraction as u64));
+
+        // Hash using Poseidon2
+        let hash_result = hash_to_quintic_extension(&elements);
+        Ok(hash_result.to_bytes_le().to_vec())
     }
 }
 

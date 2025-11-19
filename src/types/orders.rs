@@ -23,20 +23,101 @@ pub struct CreateOrderTxReq {
 /// L2 Create Order Transaction Info
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct L2CreateOrderTxInfo {
+    #[serde(rename = "AccountIndex")]
     pub account_index: i64,
+    #[serde(rename = "ApiKeyIndex")]
     pub api_key_index: u8,
-    pub order_info: OrderInfo,
+    // Flatten order_info fields to top level with PascalCase
+    #[serde(rename = "MarketIndex")]
+    pub market_index: u8,
+    #[serde(rename = "ClientOrderIndex")]
+    pub client_order_index: i64,
+    #[serde(rename = "BaseAmount")]
+    pub base_amount: i64,
+    #[serde(rename = "Price")]
+    pub price: u32,
+    #[serde(rename = "IsAsk")]
+    pub is_ask: u8,
+    #[serde(rename = "Type")]
+    pub order_type: u8,
+    #[serde(rename = "TimeInForce")]
+    pub time_in_force: u8,
+    #[serde(rename = "ReduceOnly")]
+    pub reduce_only: u8,
+    #[serde(rename = "TriggerPrice")]
+    pub trigger_price: u32,
+    #[serde(rename = "OrderExpiry")]
+    pub order_expiry: i64,
+    #[serde(rename = "ExpiredAt")]
     pub expired_at: i64,
+    #[serde(rename = "Nonce")]
     pub nonce: i64,
+    #[serde(rename = "Sig")]
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(with = "hex_serde", default)]
+    #[serde(with = "base64_serde", default)]
     pub sig: Option<Vec<u8>>,
     #[serde(skip)]
     pub signed_hash: Option<String>,
+
+    // Keep original order_info for internal use (not serialized)
+    #[serde(skip)]
+    #[serde(default = "default_order_info")]
+    pub order_info: OrderInfo,
 }
 
-// Helper module for hex serialization of signature
-mod hex_serde {
+fn default_order_info() -> OrderInfo {
+    OrderInfo {
+        market_index: 0,
+        client_order_index: 0,
+        base_amount: 0,
+        price: 0,
+        is_ask: 0,
+        order_type: 0,
+        time_in_force: 0,
+        reduce_only: 0,
+        trigger_price: 0,
+        order_expiry: 0,
+    }
+}
+
+// Helper module for base64 serialization of signature
+pub(crate) mod base64_serde {
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(bytes: &Option<Vec<u8>>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match bytes {
+            Some(vec) => {
+                use base64::Engine;
+                let encoded = base64::engine::general_purpose::STANDARD.encode(vec);
+                serializer.serialize_str(&encoded)
+            }
+            None => serializer.serialize_none(),
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<Vec<u8>>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s: Option<String> = Option::deserialize(deserializer)?;
+        match s {
+            Some(b64_str) => {
+                use base64::Engine;
+                base64::engine::general_purpose::STANDARD
+                    .decode(&b64_str)
+                    .map(Some)
+                    .map_err(serde::de::Error::custom)
+            }
+            None => Ok(None),
+        }
+    }
+}
+
+// Helper module for hex serialization (for other transaction types)
+pub(crate) mod hex_serde {
     use serde::{Deserialize, Deserializer, Serializer};
 
     pub fn serialize<S>(bytes: &Option<Vec<u8>>, serializer: S) -> Result<S::Ok, S::Error>
@@ -122,17 +203,17 @@ impl TxInfo for L2CreateOrderTxInfo {
         elements.push(Goldilocks::from(self.account_index as u64));
         elements.push(Goldilocks::from(self.api_key_index as u64));
 
-        // 7-16. Order info fields
-        elements.push(Goldilocks::from(self.order_info.market_index as u64));
-        elements.push(Goldilocks::from(self.order_info.client_order_index as u64));
-        elements.push(Goldilocks::from(self.order_info.base_amount as u64));
-        elements.push(Goldilocks::from(self.order_info.price as u64));
-        elements.push(Goldilocks::from(self.order_info.is_ask as u64));
-        elements.push(Goldilocks::from(self.order_info.order_type as u64));
-        elements.push(Goldilocks::from(self.order_info.time_in_force as u64));
-        elements.push(Goldilocks::from(self.order_info.reduce_only as u64));
-        elements.push(Goldilocks::from(self.order_info.trigger_price as u64));
-        elements.push(Goldilocks::from(self.order_info.order_expiry as u64));
+        // 7-16. Order info fields (now flattened at top level)
+        elements.push(Goldilocks::from(self.market_index as u64));
+        elements.push(Goldilocks::from(self.client_order_index as u64));
+        elements.push(Goldilocks::from(self.base_amount as u64));
+        elements.push(Goldilocks::from(self.price as u64));
+        elements.push(Goldilocks::from(self.is_ask as u64));
+        elements.push(Goldilocks::from(self.order_type as u64));
+        elements.push(Goldilocks::from(self.time_in_force as u64));
+        elements.push(Goldilocks::from(self.reduce_only as u64));
+        elements.push(Goldilocks::from(self.trigger_price as u64));
+        elements.push(Goldilocks::from(self.order_expiry as u64));
 
         // Hash using Poseidon2
         let hash_result = hash_to_quintic_extension(&elements);
@@ -144,20 +225,20 @@ impl TxInfo for L2CreateOrderTxInfo {
 
 impl L2CreateOrderTxInfo {
     fn validate_order_info(&self) -> Result<()> {
-        let order = &self.order_info;
+        // Use flattened fields instead of order_info
 
         // Market index
-        if order.market_index > MAX_MARKET_INDEX {
-            return Err(LighterError::MarketIndexTooHigh(order.market_index));
+        if self.market_index > MAX_MARKET_INDEX {
+            return Err(LighterError::MarketIndexTooHigh(self.market_index));
         }
 
         // Price
-        if order.price < MIN_ORDER_PRICE {
-            return Err(LighterError::PriceTooLow(order.price));
+        if self.price < MIN_ORDER_PRICE {
+            return Err(LighterError::PriceTooLow(self.price));
         }
 
         // IsAsk
-        if order.is_ask != 0 && order.is_ask != 1 {
+        if self.is_ask != 0 && self.is_ask != 1 {
             return Err(LighterError::IsAskInvalid);
         }
 
@@ -206,6 +287,7 @@ pub struct L2CancelOrderTxInfo {
     pub expired_at: i64,
     pub nonce: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(with = "hex_serde", default)]
     pub sig: Option<Vec<u8>>,
     #[serde(skip)]
     pub signed_hash: Option<String>,
@@ -281,6 +363,7 @@ pub struct L2ModifyOrderTxInfo {
     pub expired_at: i64,
     pub nonce: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(with = "hex_serde", default)]
     pub sig: Option<Vec<u8>>,
     #[serde(skip)]
     pub signed_hash: Option<String>,
